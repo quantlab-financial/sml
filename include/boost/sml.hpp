@@ -1268,7 +1268,10 @@ class sm {
                        (sm.current_state_[region++] = aux::get_id<state_t, typename TStates::type>((states_ids_t *)0), 0)...};
   }
 
-  void __reset_current_states() { initialize(typename sm_impl<TSM>::initial_states_t{}); }
+  void __reset_current_states() {
+    auto &sm = aux::get<sm_impl<TSM>>(sub_sms_);
+    sm.initialize(typename sm_impl<TSM>::initial_states_t{});
+  }
 
  private:
   deps_t deps_;
