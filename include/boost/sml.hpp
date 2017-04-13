@@ -1211,7 +1211,7 @@ class sm {
     aux::get<sm_impl<TSM>>(sub_sms_).start(deps_, sub_sms_);
   }
   template <class... TDeps, __BOOST_SML_REQUIRES(aux::is_unique_t<TDeps...>::value)>
-  sm(TDeps &&... deps) : deps_{aux::init{}, aux::pool<TDeps...>{deps...}}, sub_sms_{aux::pool<TDeps...>{deps...}} {
+  explicit sm(TDeps &&... deps) : deps_{aux::init{}, aux::pool<TDeps...>{deps...}}, sub_sms_{aux::pool<TDeps...>{deps...}} {
     aux::get<sm_impl<TSM>>(sub_sms_).start(deps_, sub_sms_);
   }
   template <class TEvent, __BOOST_SML_REQUIRES(aux::is_base_of<TEvent, events_ids>::value)>
@@ -1267,6 +1267,8 @@ class sm {
     (void)aux::swallow{0,
                        (sm.current_state_[region++] = aux::get_id<state_t, typename TStates::type>((states_ids_t *)0), 0)...};
   }
+
+  void __reset_current_states() { initialize(typename sm_impl<TSM>::initial_states_t{}); }
 
  private:
   deps_t deps_;
@@ -1539,11 +1541,10 @@ struct defer : action_base {
 };
 }
 }
-template <class...>
-struct Policies {
-  template <class... Ts>
-  Policies(Ts &&...) {}
-};
+namespace detail {
+template <class T, __BOOST_SML_REQUIRES(concepts::composable<typename T::sm>::value)>
+using state_machine = back::sm<T>;
+}
 template <class T>
 struct thread_safe : aux::pair<back::thread_safety_policy__, thread_safe<T>> {
   using type = T;
@@ -1560,25 +1561,8 @@ struct logger : aux::pair<back::logger_policy__, logger<T>> {
   using type = T;
 };
 struct testing : aux::pair<back::testing_policy__, testing> {};
-namespace detail {
-template <class T, __BOOST_SML_REQUIRES(concepts::composable<typename T::sm>::value)>
-using state_machine = back::sm<T>;
-template <class T, class TPolicy, class... TPolicies>
-struct rebind_policies {
-  using type = back::sm_policy<T, TPolicy, TPolicies...>;
-};
-template <class T, class... TPolicies, class... Ts>
-struct rebind_policies<T, Policies<TPolicies...>, Ts...> {
-  using type = back::sm_policy<T, TPolicies..., Ts...>;
-};
-template <class T, class TPolicy, class... TPolicies>
-using rebind_policies_t = typename rebind_policies<T, TPolicy, TPolicies...>::type;
-}
-class SM;
-template <class T = SM, class TPolicies = Policies<>, class... Ts>
-struct sm : detail::state_machine<detail::rebind_policies_t<T, TPolicies, Ts...>> {
-  using detail::state_machine<detail::rebind_policies_t<T, TPolicies, Ts...>>::state_machine;
-};
+template <class T, class... TPolicies>
+using sm = detail::state_machine<back::sm_policy<T, TPolicies...>>;
 namespace concepts {
 aux::false_type transitional_impl(...);
 template <class T>
@@ -2183,3 +2167,4 @@ BOOST_SML_NAMESPACE_END
 #undef __has_builtin__make_integer_seq
 #endif
 #endif
+
