@@ -897,8 +897,13 @@ template <class T>
 aux::false_type test_callable(aux::non_type<void (callable_fallback::*)(), &T::operator()> *);
 template <class>
 aux::true_type test_callable(...);
+
+template <bool, class T>
+struct cimpl : decltype(test_callable<aux::inherit<T, callable_fallback>>(0)) {};
+template <class T>
+struct cimpl<false, T> : aux::false_type {};
 template <class, class T>
-struct callable : decltype(test_callable<aux::inherit<T, callable_fallback>>(0)) {};
+struct callable : cimpl<__is_class(T) && !__is_final(T), T> {};
 }
 #if !defined(BOOST_SML_DISABLE_EXCEPTIONS)
 #define BOOST_SML_DISABLE_EXCEPTIONS !(defined(__cpp_exceptions) || defined(__EXCEPTIONS))
@@ -1208,6 +1213,7 @@ class sm {
   struct events_ids : aux::apply_t<aux::inherit, events> {};
 
  public:
+  using type = sm_t;
   sm(sm &&) = default;
   sm(const sm &) = delete;
   sm &operator=(const sm &) = delete;
@@ -2174,4 +2180,3 @@ BOOST_SML_NAMESPACE_END
 #undef __has_builtin__make_integer_seq
 #endif
 #endif
-
