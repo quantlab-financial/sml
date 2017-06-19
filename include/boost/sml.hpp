@@ -1608,13 +1608,27 @@ struct transitional : decltype(transitional_impl(aux::declval<T>())) {};
 namespace front {
 namespace actions {
 struct process {
-  template <class TEvent>
+  template <class TEvent, class = void>
   class process_impl : public action_base {
    public:
     explicit process_impl(const TEvent &event) : event(event) {}
+
     template <class T, class TSM, class TDeps, class TSubs>
     void operator()(const T &, TSM &sm, TDeps &deps, TSubs &subs) {
       sm.process_event(event, deps, subs);
+    }
+
+   private:
+    TEvent event;
+  };
+  template <class TEvent>
+  class process_impl<TEvent, std::enable_if_t<concepts::callable<void, TEvent>::value>> : public action_base {
+   public:
+    explicit process_impl(const TEvent &event) : event(event) {}
+
+    template <class T, class TSM, class TDeps, class TSubs>
+    void operator()(const T &, TSM &sm, TDeps &deps, TSubs &subs) {
+      sm.process_event(event(), deps, subs);
     }
 
    private:
