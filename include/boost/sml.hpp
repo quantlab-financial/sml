@@ -1622,7 +1622,7 @@ struct process {
     TEvent event;
   };
   template <class TEvent>
-  class process_impl<TEvent, std::enable_if_t<concepts::callable<void, TEvent>::value>> : public action_base {
+  class process_impl<TEvent, aux::enable_if_t<concepts::callable<void, TEvent>::value>> : public action_base {
    public:
     explicit process_impl(const TEvent &event) : event(event) {}
 
