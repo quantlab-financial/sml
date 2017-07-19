@@ -1303,6 +1303,9 @@ class sm {
     sm.initialize(typename sm_impl<TSM>::initial_states_t{});
   }
 
+  sm_t &operator*() { return sm_; }
+  sm_t *operator->() { return &sm_; }
+
  private:
   sm_t sm_{};
   deps_t deps_;
