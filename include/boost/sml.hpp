@@ -1285,9 +1285,8 @@ class sm {
     });
     return result;
   }
-  template <class T = aux::identity<sm_t>, class... TStates,
-            __BOOST_SML_REQUIRES(!aux::is_same<no_policy, typename TSM::testing_policy>::value && aux::always<T>::value)>
-  void __set_current_states(const TStates &...) {
+  template <class T = aux::identity<sm_t>, class... TStates>
+  void set_current_states(const TStates &...) {
     using type = typename T::type;
     using sm_impl_t = sm_impl<typename TSM::template rebind<type>>;
     using states_ids_t = typename sm_impl_t::states_ids_t;
