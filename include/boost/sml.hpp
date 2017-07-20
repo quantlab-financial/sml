@@ -1233,7 +1233,10 @@ class sm {
 
  public:
   using type = sm_t;
-  sm(sm &&) = default;
+  sm(sm &&other)
+      : deps_(other.deps_),
+        sm_(other.sm_),
+        sub_sms_{make_all_subs(typename all_subs<typename sm_all_t::type, deps_t>::type{}, sm_, other.deps_)} {}
   sm(const sm &) = delete;
   sm &operator=(const sm &) = delete;
   sm(aux::init, deps_t &deps, sm_t sm)
@@ -1306,7 +1309,7 @@ class sm {
   sm_t *operator->() { return &sm_; }
 
  private:
-  sm_t sm_{};
+  sm_t sm_;
   deps_t deps_;
   sub_sms_t sub_sms_;
 };
