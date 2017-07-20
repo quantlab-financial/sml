@@ -1624,7 +1624,7 @@ struct process {
     }
 
    private:
-    TEvent event;
+    aux::conditional_t<aux::is_constructible<TEvent, const TEvent &>::value, TEvent, const TEvent &> event;
   };
   template <class TEvent>
   class process_impl<TEvent, aux::enable_if_t<concepts::callable<void, TEvent>::value>> : public action_base {
