@@ -1244,7 +1244,9 @@ class sm {
     aux::get<sm_impl<TSM>>(sub_sms_).start(deps_, sub_sms_);
   }
   template <class... TDeps, __BOOST_SML_REQUIRES(aux::is_unique_t<TDeps...>::value)>
-  explicit sm(TDeps &&... deps) : deps_{aux::init{}, aux::pool<TDeps...>{deps...}}, sub_sms_{aux::pool<TDeps...>{deps...}} {
+  explicit sm(TDeps &&... deps)
+      : deps_{aux::init{}, aux::pool<TDeps...>{deps...}},
+        sub_sms_{make_all_subs(typename all_subs<typename sm_all_t::type, deps_t>::type{}, sm_, deps_)} {
     aux::get<sm_impl<TSM>>(sub_sms_).start(deps_, sub_sms_);
   }
   template <class TEvent, __BOOST_SML_REQUIRES(aux::is_base_of<TEvent, events_ids>::value)>
