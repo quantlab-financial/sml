@@ -1267,13 +1267,13 @@ class sm {
   }
   template <class T = aux::identity<sm_t>, class TState>
   bool is(const TState &) const {
-    auto result = false;
-    visit_current_states<T>([&](auto state) {
-      (void)state;
-      result |= aux::is_same<typename TState::type, typename decltype(state)::type>::value;
-    });
-    return result;
+    using type = typename T::type;
+    using sm_impl_t = sm_impl<typename TSM::template rebind<type>>;
+    using state_t = typename sm_impl_t::state_t;
+    using states_ids_t = typename sm_impl_t::states_ids_t;
+    return aux::get_id<state_t, typename TState::type>((states_ids_t *)0) == aux::cget<sm_impl_t>(sub_sms_).current_state_[0];
   }
+
   template <class T = aux::identity<sm_t>, class... TStates,
             __BOOST_SML_REQUIRES(sizeof...(TStates) == sm_impl<typename TSM::template rebind<typename T::type>>::regions)>
   bool is(const TStates &...) const {
