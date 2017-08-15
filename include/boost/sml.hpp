@@ -693,15 +693,14 @@ template <class SM, class TLogger, class TDeps, class TAction, class TEvent>
 void log_action(const aux::type<TLogger> &, TDeps &deps, const aux::zero_wrapper<TAction> &action, const TEvent &event) {
   return static_cast<aux::pool_type<TLogger &> &>(deps).value.template log_action<SM>(action.get(), event);
 }
-template <class, class TDeps, class TGuard, class TEvent>
-void log_guard(const aux::type<no_policy> &, TDeps &, const TGuard &, const TEvent &, bool) {}
-template <class SM, class TLogger, class TDeps, class TGuard, class TEvent>
-void log_guard(const aux::type<TLogger> &, TDeps &deps, const TGuard &guard, const TEvent &event, bool result) {
+template <class, class TDeps, class TGuard, class TEvent, class Q>
+void log_guard(const aux::type<no_policy> &, TDeps &, const TGuard &, const TEvent &, Q) {}
+template <class SM, class TLogger, class TDeps, class TGuard, class TEvent, class Q>
+void log_guard(const aux::type<TLogger> &, TDeps &deps, const TGuard &guard, const TEvent &event, Q result) {
   return static_cast<aux::pool_type<TLogger &> &>(deps).value.template log_guard<SM>(guard, event, result);
 }
-template <class SM, class TLogger, class TDeps, class TGuard, class TEvent>
-void log_guard(const aux::type<TLogger> &, TDeps &deps, const aux::zero_wrapper<TGuard> &guard, const TEvent &event,
-               bool result) {
+template <class SM, class TLogger, class TDeps, class TGuard, class TEvent, class Q>
+void log_guard(const aux::type<TLogger> &, TDeps &deps, const aux::zero_wrapper<TGuard> &guard, const TEvent &event, Q result) {
   return static_cast<aux::pool_type<TLogger &> &>(deps).value.template log_guard<SM>(guard.get(), event, result);
 }
 }
@@ -1381,8 +1380,8 @@ struct call<TEvent, aux::type_list<>, TLogger> {
     using result_type = decltype(object());
     return execute_impl<typename TSM::sm_t>(aux::type<result_type>{}, object, event, deps);
   }
-  template <class TSM, class T, class TDeps>
-  static auto execute_impl(const aux::type<bool> &, T object, const TEvent &event, TDeps &deps) {
+  template <class TSM, class T, class TDeps, class Q>
+  static auto execute_impl(const aux::type<Q> &, T object, const TEvent &event, TDeps &deps) {
     const auto result = object();
     back::log_guard<TSM>(aux::type<TLogger>{}, deps, object, event, result);
     return result;
@@ -1407,8 +1406,8 @@ struct call<TEvent, aux::type_list<TEvent>, TLogger> {
     using result_type = decltype(object(event));
     return execute_impl<typename TSM::sm_t>(aux::type<result_type>{}, object, event, deps);
   }
-  template <class TSM, class T, class TDeps>
-  static auto execute_impl(const aux::type<bool> &, T object, const TEvent &event, TDeps &deps) {
+  template <class TSM, class T, class TDeps, class Q>
+  static auto execute_impl(const aux::type<Q> &, T object, const TEvent &event, TDeps &deps) {
     const auto result = object(event);
     back::log_guard<TSM>(aux::type<TLogger>{}, deps, object, event, result);
     return result;
@@ -1444,7 +1443,19 @@ template <class TEvent, class... Ts, class TLogger>
 struct call<TEvent, aux::type_list<Ts...>, TLogger> {
   template <class T, class TSM, class TDeps, class TSubs>
   static auto execute(T object, const TEvent &event, TSM &, TDeps &deps, TSubs &) {
-    return object(get_arg(aux::type<Ts>{}, event, deps)...);
+    using result_type = decltype(object(get_arg(aux::type<Ts>{}, event, deps)...));
+    return execute_impl<typename TSM::sm_t>(aux::type<result_type>{}, object, event, deps);
+  }
+  template <class TSM, class T, class TDeps, class Q>
+  static auto execute_impl(const aux::type<Q> &, T object, const TEvent &event, TDeps &deps) {
+    const auto result = object(get_arg(aux::type<Ts>{}, event, deps)...);
+    back::log_guard<TSM>(aux::type<TLogger>{}, deps, object, event, result);
+    return result;
+  }
+  template <class TSM, class T, class TDeps>
+  static auto execute_impl(const aux::type<void> &, T object, const TEvent &event, TDeps &deps) {
+    back::log_action<TSM>(aux::type<TLogger>{}, deps, object, event);
+    object(get_arg(aux::type<Ts>{}, event, deps)...);
   }
 };
 template <class... Ts>
