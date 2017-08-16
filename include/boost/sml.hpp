@@ -671,37 +671,39 @@ struct get_state_name<aux::string<sm_policy<T, TName>>> {
 template <class T>
 using get_state_name_t = typename get_state_name<T>::type;
 template <class, class TDeps, class TEvent>
-void log_process_event(const aux::type<no_policy> &, TDeps &, const TEvent &) {}
+void log_process_event(const aux::type<no_policy> &, const void *, TDeps &, const TEvent &) {}
 template <class SM, class TLogger, class TDeps, class TEvent>
-void log_process_event(const aux::type<TLogger> &, TDeps &deps, const TEvent &event) {
-  return static_cast<aux::pool_type<TLogger &> &>(deps).value.template log_process_event<SM>(event);
+void log_process_event(const aux::type<TLogger> &, const void *sm, TDeps &deps, const TEvent &event) {
+  return static_cast<aux::pool_type<TLogger &> &>(deps).value.template log_process_event<SM>(sm, event);
 }
 template <class, class TDeps, class TSrcState, class TDstState>
-void log_state_change(const aux::type<no_policy> &, TDeps &, const TSrcState &, const TDstState &) {}
+void log_state_change(const aux::type<no_policy> &, const void *, TDeps &, const TSrcState &, const TDstState &) {}
 template <class SM, class TLogger, class TDeps, class TSrcState, class TDstState>
-void log_state_change(const aux::type<TLogger> &, TDeps &deps, const TSrcState &, const TDstState &) {
-  return static_cast<aux::pool_type<TLogger &> &>(deps).value.template log_state_change<SM>(get_state_name_t<TSrcState>{},
+void log_state_change(const aux::type<TLogger> &, const void *sm, TDeps &deps, const TSrcState &, const TDstState &) {
+  return static_cast<aux::pool_type<TLogger &> &>(deps).value.template log_state_change<SM>(sm, get_state_name_t<TSrcState>{},
                                                                                             get_state_name_t<TDstState>{});
 }
 template <class, class TDeps, class TAction, class TEvent>
-void log_action(const aux::type<no_policy> &, TDeps &, const TAction &, const TEvent &) {}
+void log_call(const aux::type<no_policy> &, const void *, TDeps &, const TAction &, const TEvent &) {}
 template <class SM, class TLogger, class TDeps, class TAction, class TEvent>
-void log_action(const aux::type<TLogger> &, TDeps &deps, const TAction &action, const TEvent &event) {
-  return static_cast<aux::pool_type<TLogger &> &>(deps).value.template log_action<SM>(action, event);
+void log_call(const aux::type<TLogger> &, const void *sm, TDeps &deps, const TAction &action, const TEvent &event) {
+  return static_cast<aux::pool_type<TLogger &> &>(deps).value.template log_call<SM>(sm, action, event);
 }
 template <class SM, class TLogger, class TDeps, class TAction, class TEvent>
-void log_action(const aux::type<TLogger> &, TDeps &deps, const aux::zero_wrapper<TAction> &action, const TEvent &event) {
-  return static_cast<aux::pool_type<TLogger &> &>(deps).value.template log_action<SM>(action.get(), event);
+void log_call(const aux::type<TLogger> &, const void *sm, TDeps &deps, const aux::zero_wrapper<TAction> &action,
+              const TEvent &event) {
+  return static_cast<aux::pool_type<TLogger &> &>(deps).value.template log_call<SM>(sm, action.get(), event);
 }
 template <class, class TDeps, class TGuard, class TEvent, class Q>
-void log_guard(const aux::type<no_policy> &, TDeps &, const TGuard &, const TEvent &, Q) {}
+void log_call(const aux::type<no_policy> &, const void *, TDeps &, const TGuard &, const TEvent &, Q) {}
 template <class SM, class TLogger, class TDeps, class TGuard, class TEvent, class Q>
-void log_guard(const aux::type<TLogger> &, TDeps &deps, const TGuard &guard, const TEvent &event, Q result) {
-  return static_cast<aux::pool_type<TLogger &> &>(deps).value.template log_guard<SM>(guard, event, result);
+void log_call(const aux::type<TLogger> &, const void *sm, TDeps &deps, const TGuard &guard, const TEvent &event, Q result) {
+  return static_cast<aux::pool_type<TLogger &> &>(deps).value.template log_call<SM>(sm, guard, event, result);
 }
 template <class SM, class TLogger, class TDeps, class TGuard, class TEvent, class Q>
-void log_guard(const aux::type<TLogger> &, TDeps &deps, const aux::zero_wrapper<TGuard> &guard, const TEvent &event, Q result) {
-  return static_cast<aux::pool_type<TLogger &> &>(deps).value.template log_guard<SM>(guard.get(), event, result);
+void log_call(const aux::type<TLogger> &, TDeps &deps, const void *sm, const aux::zero_wrapper<TGuard> &guard,
+              const TEvent &event, Q result) {
+  return static_cast<aux::pool_type<TLogger &> &>(deps).value.template log_call<SM>(sm, guard.get(), event, result);
 }
 }
 namespace back {
@@ -957,7 +959,7 @@ struct sm_impl {
   sm_impl &operator=(const sm_impl &) = delete;
   template <class TEvent, class TDeps, class TSubs>
   bool process_event(const TEvent &event, TDeps &deps, TSubs &subs) {
-    log_process_event<sm_t>(aux::type<logger_t>{}, deps, event);
+    log_process_event<sm_t>(aux::type<logger_t>{}, this, deps, event);
 #if BOOST_SML_DISABLE_EXCEPTIONS
     const auto handled = process_event_impl<get_event_mapping_t<get_generic_t<TEvent>, mappings>>(
         event, deps, subs, states_t{}, aux::make_index_sequence<regions>{});
@@ -994,7 +996,7 @@ struct sm_impl {
             __BOOST_SML_REQUIRES(aux::is_base_of<get_generic_t<TEvent>, events_ids_t>::value &&
                                  !aux::is_base_of<get_mapped_t<TEvent>, events_ids_t>::value)>
   bool process_internal_events(const TEvent &event, TDeps &deps, TSubs &subs) {
-    log_process_event<sm_t>(aux::type<logger_t>{}, deps, event);
+    log_process_event<sm_t>(aux::type<logger_t>{}, this, deps, event);
 #if BOOST_SML_DISABLE_EXCEPTIONS
     return process_event_impl<get_event_mapping_t<get_generic_t<TEvent>, mappings>>(event, deps, subs, states_t{},
                                                                                     aux::make_index_sequence<regions>{});
@@ -1005,7 +1007,7 @@ struct sm_impl {
   template <class TEvent, class TDeps, class TSubs,
             __BOOST_SML_REQUIRES(aux::is_base_of<get_mapped_t<TEvent>, events_ids_t>::value)>
   bool process_internal_events(const TEvent &event, TDeps &deps, TSubs &subs) {
-    log_process_event<sm_t>(aux::type<logger_t>{}, deps, event);
+    log_process_event<sm_t>(aux::type<logger_t>{}, this, deps, event);
 #if BOOST_SML_DISABLE_EXCEPTIONS
     return process_event_impl<get_event_mapping_t<get_mapped_t<TEvent>, mappings>>(event, deps, subs, states_t{},
                                                                                    aux::make_index_sequence<regions>{});
@@ -1023,7 +1025,7 @@ struct sm_impl {
             __BOOST_SML_REQUIRES(aux::is_base_of<get_generic_t<TEvent>, events_ids_t>::value &&
                                  !aux::is_base_of<get_mapped_t<TEvent>, events_ids_t>::value)>
   bool process_internal_event(const TEvent &event, TDeps &deps, TSubs &subs, state_t &current_state) {
-    log_process_event<sm_t>(aux::type<logger_t>{}, deps, event);
+    log_process_event<sm_t>(aux::type<logger_t>{}, this, deps, event);
 #if BOOST_SML_DISABLE_EXCEPTIONS
     return process_event_impl<get_event_mapping_t<get_generic_t<TEvent>, mappings>>(event, deps, subs, states_t{},
                                                                                     current_state);
@@ -1035,7 +1037,7 @@ struct sm_impl {
   template <class TEvent, class TDeps, class TSubs,
             __BOOST_SML_REQUIRES(aux::is_base_of<get_mapped_t<TEvent>, events_ids_t>::value)>
   bool process_internal_event(const TEvent &event, TDeps &deps, TSubs &subs, state_t &current_state) {
-    log_process_event<sm_t>(aux::type<logger_t>{}, deps, event);
+    log_process_event<sm_t>(aux::type<logger_t>{}, this, deps, event);
 #if BOOST_SML_DISABLE_EXCEPTIONS
     return process_event_impl<get_event_mapping_t<get_mapped_t<TEvent>, mappings>>(event, deps, subs, states_t{},
                                                                                    current_state);
@@ -1121,7 +1123,7 @@ struct sm_impl {
   template <class TDeps, class TSubs, class TEvent>
   bool process_event_no_defer(TDeps &deps, TSubs &subs, const void *data) {
     const auto &event = *static_cast<const TEvent *>(data);
-    log_process_event<sm_t>(aux::type<logger_t>{}, deps, event);
+    log_process_event<sm_t>(aux::type<logger_t>{}, this, deps, event);
 #if BOOST_SML_DISABLE_EXCEPTIONS
     const auto handled = process_event_impl<get_event_mapping_t<TEvent, mappings>>(event, deps, subs, states_t{},
                                                                                    aux::make_index_sequence<regions>{});
@@ -1376,19 +1378,19 @@ struct call<TEvent, aux::type_list<>, back::no_policy> {
 template <class TEvent, class TLogger>
 struct call<TEvent, aux::type_list<>, TLogger> {
   template <class T, class TSM, class TDeps, class TSubs>
-  static auto execute(T object, const TEvent &event, TSM &, TDeps &deps, TSubs &) {
+  static auto execute(T object, const TEvent &event, TSM &sm, TDeps &deps, TSubs &) {
     using result_type = decltype(object());
-    return execute_impl<typename TSM::sm_t>(aux::type<result_type>{}, object, event, deps);
+    return execute_impl<typename TSM::sm_t>(aux::type<result_type>{}, &sm, object, event, deps);
   }
   template <class TSM, class T, class TDeps, class Q>
-  static auto execute_impl(const aux::type<Q> &, T object, const TEvent &event, TDeps &deps) {
+  static auto execute_impl(const aux::type<Q> &, const void *sm, T object, const TEvent &event, TDeps &deps) {
     const auto result = object();
-    back::log_guard<TSM>(aux::type<TLogger>{}, deps, object, event, result);
+    back::log_call<TSM>(aux::type<TLogger>{}, sm, deps, object, event, result);
     return result;
   }
   template <class TSM, class T, class TDeps>
-  static auto execute_impl(const aux::type<void> &, T object, const TEvent &event, TDeps &deps) {
-    back::log_action<TSM>(aux::type<TLogger>{}, deps, object, event);
+  static auto execute_impl(const aux::type<void> &, const void *sm, T object, const TEvent &event, TDeps &deps) {
+    back::log_call<TSM>(aux::type<TLogger>{}, sm, deps, object, event);
     object();
   }
 };
@@ -1402,19 +1404,19 @@ struct call<TEvent, aux::type_list<TEvent>, back::no_policy> {
 template <class TEvent, class TLogger>
 struct call<TEvent, aux::type_list<TEvent>, TLogger> {
   template <class T, class TSM, class TDeps, class TSubs>
-  static auto execute(T object, const TEvent &event, TSM &, TDeps &deps, TSubs &) {
+  static auto execute(T object, const TEvent &event, TSM &sm, TDeps &deps, TSubs &) {
     using result_type = decltype(object(event));
-    return execute_impl<typename TSM::sm_t>(aux::type<result_type>{}, object, event, deps);
+    return execute_impl<typename TSM::sm_t>(aux::type<result_type>{}, &sm, object, event, deps);
   }
   template <class TSM, class T, class TDeps, class Q>
-  static auto execute_impl(const aux::type<Q> &, T object, const TEvent &event, TDeps &deps) {
+  static auto execute_impl(const aux::type<Q> &, const void *sm, T object, const TEvent &event, TDeps &deps) {
     const auto result = object(event);
-    back::log_guard<TSM>(aux::type<TLogger>{}, deps, object, event, result);
+    back::log_call<TSM>(aux::type<TLogger>{}, sm, deps, object, event, result);
     return result;
   }
   template <class TSM, class T, class TDeps>
-  static auto execute_impl(const aux::type<void> &, T object, const TEvent &event, TDeps &deps) {
-    back::log_action<TSM>(aux::type<TLogger>{}, deps, object, event);
+  static auto execute_impl(const aux::type<void> &, const void *sm, T object, const TEvent &event, TDeps &deps) {
+    back::log_call<TSM>(aux::type<TLogger>{}, sm, deps, object, event);
     object();
   }
 };
@@ -1442,19 +1444,19 @@ struct call<TEvent, aux::type_list<Ts...>, back::no_policy> {
 template <class TEvent, class... Ts, class TLogger>
 struct call<TEvent, aux::type_list<Ts...>, TLogger> {
   template <class T, class TSM, class TDeps, class TSubs>
-  static auto execute(T object, const TEvent &event, TSM &, TDeps &deps, TSubs &) {
+  static auto execute(T object, const TEvent &event, TSM &sm, TDeps &deps, TSubs &) {
     using result_type = decltype(object(get_arg(aux::type<Ts>{}, event, deps)...));
-    return execute_impl<typename TSM::sm_t>(aux::type<result_type>{}, object, event, deps);
+    return execute_impl<typename TSM::sm_t>(aux::type<result_type>{}, &sm, object, event, deps);
   }
   template <class TSM, class T, class TDeps, class Q>
-  static auto execute_impl(const aux::type<Q> &, T object, const TEvent &event, TDeps &deps) {
+  static auto execute_impl(const aux::type<Q> &, const void *sm, T object, const TEvent &event, TDeps &deps) {
     const auto result = object(get_arg(aux::type<Ts>{}, event, deps)...);
-    back::log_guard<TSM>(aux::type<TLogger>{}, deps, object, event, result);
+    back::log_call<TSM>(aux::type<TLogger>{}, sm, deps, object, event, result);
     return result;
   }
   template <class TSM, class T, class TDeps>
-  static auto execute_impl(const aux::type<void> &, T object, const TEvent &event, TDeps &deps) {
-    back::log_action<TSM>(aux::type<TLogger>{}, deps, object, event);
+  static auto execute_impl(const aux::type<void> &, const void *sm, T object, const TEvent &event, TDeps &deps) {
+    back::log_call<TSM>(aux::type<TLogger>{}, sm, deps, object, event);
     object(get_arg(aux::type<Ts>{}, event, deps)...);
   }
 };
@@ -1960,17 +1962,17 @@ void update_composite_states(TSubs &subs, aux::false_type, Ts &&...) {
   back::sub_sm<T>::get(&subs).initialize(typename T::initial_states_t{});
 }
 template <class SM, class TDeps, class TSubs, class TSrcState, class TDstState>
-void update_current_state(SM &, TDeps &deps, TSubs &, typename SM::state_t &current_state,
+void update_current_state(SM &sm, TDeps &deps, TSubs &, typename SM::state_t &current_state,
                           const typename SM::state_t &new_state, const TSrcState &, const TDstState &) {
-  back::log_state_change<typename SM::sm_t>(aux::type<typename SM::logger_t>{}, deps, aux::string<typename TSrcState::type>{},
-                                            aux::string<typename TDstState::type>{});
+  back::log_state_change<typename SM::sm_t>(aux::type<typename SM::logger_t>{}, &sm, deps,
+                                            aux::string<typename TSrcState::type>{}, aux::string<typename TDstState::type>{});
   current_state = new_state;
 }
 template <class SM, class TDeps, class TSubs, class TSrcState, class T>
-void update_current_state(SM &, TDeps &deps, TSubs &subs, typename SM::state_t &current_state,
+void update_current_state(SM &sm, TDeps &deps, TSubs &subs, typename SM::state_t &current_state,
                           const typename SM::state_t &new_state, const TSrcState &, const state<back::sm<T>> &) {
-  back::log_state_change<typename SM::sm_t>(aux::type<typename SM::logger_t>{}, deps, aux::string<typename TSrcState::type>{},
-                                            aux::string<T>{});
+  back::log_state_change<typename SM::sm_t>(aux::type<typename SM::logger_t>{}, &sm, deps,
+                                            aux::string<typename TSrcState::type>{}, aux::string<T>{});
   current_state = new_state;
   update_composite_states<back::sm_impl<T>>(subs, typename back::sm_impl<T>::has_history_states{},
                                             typename back::sm_impl<T>::history_states_t{});
