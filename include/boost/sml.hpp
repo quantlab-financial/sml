@@ -1304,9 +1304,23 @@ class sm {
   }
 
   void reset() {
+    using T = aux::identity<sm_t>;
+    using type = typename T::type;
+    using sm_impl_t = sm_impl<typename TSM::template rebind<type>>;
+    using states_ids_t = typename sm_impl_t::states_ids_t;
+    using state_t = typename sm_impl_t::state_t;
+    auto &sm = aux::get<sm_impl<TSM>>(sub_sms_);
+    sm.current_state_[0] = aux::get_id<state_t, terminate_state>((states_ids_t *)0);
+  }
+
+  void start() {
     auto &sm = aux::get<sm_impl<TSM>>(sub_sms_);
     sm.initialize(typename sm_impl<TSM>::initial_states_t{});
   }
+
+  void stop() { reset(); }
+
+  auto is_terminated() const { return aux::cget<sm_impl<TSM>>(sub_sms_).is_terminated(); }
 
   sm_t &operator*() { return sm_; }
   sm_t *operator->() { return &sm_; }
