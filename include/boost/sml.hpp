@@ -1313,6 +1313,8 @@ class sm {
     sm.current_state_[0] = aux::get_id<state_t, terminate_state>((states_ids_t *)0);
   }
 
+  void init() { reset(); }
+
   void start() {
     auto &sm = aux::get<sm_impl<TSM>>(sub_sms_);
     sm.initialize(typename sm_impl<TSM>::initial_states_t{});
