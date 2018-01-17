@@ -170,7 +170,7 @@ struct function_traits<R (T::*)(TArgs...) const> {
 };
 template <class T>
 using function_traits_t = typename function_traits<T>::args;
-}
+}  // namespace aux
 namespace aux {
 using swallow = int[];
 template <int...>
@@ -390,7 +390,7 @@ auto get_type_name(const char *ptr, index_sequence<Ns...>) {
   static const char str[] = {ptr[N + Ns]..., 0};
   return str;
 }
-}
+}  // namespace detail
 template <class T>
 const char *get_type_name() {
 #if defined(_MSC_VER)
@@ -421,7 +421,7 @@ struct string<T> {
   }
   static auto c_str_impl(...) { return get_type_name<T>(); }
 };
-}
+}  // namespace aux
 namespace back {
 struct _ {};
 struct initial {};
@@ -495,7 +495,7 @@ template <class TEvent>
 using get_generic_t = typename event_type<TEvent>::generic_t;
 template <class TEvent>
 using get_mapped_t = typename event_type<TEvent>::mapped_t;
-}
+}  // namespace back
 namespace back {
 template <class>
 class sm;
@@ -614,7 +614,7 @@ template <class T, class... Ts>
 struct convert_to_sm<T, aux::type_list<Ts...>> {
   using type = aux::type_list<sm_impl<T>, sm_impl<typename T::template rebind<Ts>>...>;
 };
-}
+}  // namespace back
 namespace back {
 template <class>
 class sm;
@@ -705,7 +705,7 @@ void log_call(const aux::type<TLogger> &, TDeps &deps, const void *sm, const aux
               const TEvent &event, Q result) {
   return static_cast<aux::pool_type<TLogger &> &>(deps).value.template log_call<SM>(sm, guard.get(), event, result);
 }
-}
+}  // namespace back
 namespace back {
 template <class>
 class sm;
@@ -792,7 +792,7 @@ struct transitions_sub<sm<TSM>> {
     return true;
   }
 };
-}
+}  // namespace back
 namespace back {
 template <class>
 class sm;
@@ -890,7 +890,7 @@ template <class T, class TMappings>
 TMappings get_event_mapping_impl(event_mappings<T, TMappings> *);
 template <class T, class TMappings>
 using get_event_mapping_t = decltype(get_event_mapping_impl<T>((TMappings *)0));
-}
+}  // namespace back
 namespace concepts {
 struct callable_fallback {
   void operator()();
@@ -906,7 +906,7 @@ template <class T>
 struct cimpl<false, T> : aux::false_type {};
 template <class, class T>
 struct callable : cimpl<__is_class(T) && !__is_final(T), T> {};
-}
+}  // namespace concepts
 #if !defined(BOOST_SML_DISABLE_EXCEPTIONS)
 #define BOOST_SML_DISABLE_EXCEPTIONS !(defined(__cpp_exceptions) || defined(__EXCEPTIONS))
 #endif
@@ -1250,13 +1250,21 @@ class sm {
         sub_sms_{make_all_subs(typename all_subs<typename sm_all_t::type, deps_t>::type{}, sm_, deps_)} {
     aux::get<sm_impl<TSM>>(sub_sms_).start(deps_, sub_sms_);
   }
-  template <class TEvent, __BOOST_SML_REQUIRES(aux::is_base_of<TEvent, events_ids>::value)>
-  void process_event(const TEvent &event) {
-    aux::get<sm_impl<TSM>>(sub_sms_).process_event(event, deps_, sub_sms_);
+  template <class TEvent, class... Ts, __BOOST_SML_REQUIRES(aux::is_base_of<TEvent, events_ids>::value)>
+  void process_event(const TEvent &event, Ts &... ts) {
+    struct deps : deps_t {
+      deps(const deps_t &ds, Ts &... ts) : deps_t{ds}, args{ts...} {}
+      aux::pool<Ts &...> args;
+    } ds{deps_, ts...};
+    aux::get<sm_impl<TSM>>(sub_sms_).process_event(event, ds, sub_sms_);
   }
-  template <class TEvent, __BOOST_SML_REQUIRES(!aux::is_base_of<TEvent, events_ids>::value)>
-  void process_event(const TEvent &event) {
-    aux::get<sm_impl<TSM>>(sub_sms_).process_event(unexpected_event<_, TEvent>{event}, deps_, sub_sms_);
+  template <class TEvent, class... Ts, __BOOST_SML_REQUIRES(!aux::is_base_of<TEvent, events_ids>::value)>
+  void process_event(const TEvent &event, Ts &... ts) {
+    struct deps : deps_t {
+      deps(const deps_t &ds, Ts &... ts) : deps_t{ds}, args{ts...} {}
+      aux::pool<Ts &...> args;
+    } ds{deps_, ts...};
+    aux::get<sm_impl<TSM>>(sub_sms_).process_event(unexpected_event<_, TEvent>{event}, ds, sub_sms_);
   }
   template <class T = aux::identity<sm_t>, class TVisitor, __BOOST_SML_REQUIRES(concepts::callable<void, TVisitor>::value)>
   void visit_current_states(const TVisitor &visitor) const {
@@ -1332,7 +1340,7 @@ class sm {
   deps_t deps_;
   sub_sms_t sub_sms_;
 };
-}
+}  // namespace back
 namespace concepts {
 template <class T>
 decltype(aux::declval<T>().operator()()) composable_impl(int);
@@ -1340,16 +1348,20 @@ template <class>
 void composable_impl(...);
 template <class T>
 struct composable : aux::is<aux::pool, decltype(composable_impl<T>(0))> {};
-}
+}  // namespace concepts
 namespace front {
 struct operator_base {};
 struct action_base {};
 template <class, class>
-aux::type_list<action_base> args1__(...);
+aux::type_list<action_base> args2__(...);
+template <class T, class>
+auto args2__(int) -> aux::function_traits_t<decltype(&T::operator())>;
 template <class T, class E>
-auto args1__(int) -> aux::function_traits_t<decltype(&T::operator())>;
+auto args1__(int) -> aux::function_traits_t<decltype(&T::__BOOST_SML_TEMPLATE_KEYWORD operator()<back::get_event_t<E>>)>;
 template <class T, class E>
-auto args__(int) -> aux::function_traits_t<decltype(&T::__BOOST_SML_TEMPLATE_KEYWORD operator()<back::get_event_t<E>>)>;
+auto args1__(...) -> decltype(args2__<T, E>(0));
+template <class T, class>
+auto args__(int) -> aux::function_traits_t<decltype(&T::__BOOST_SML_TEMPLATE_KEYWORD operator()<>)>;
 template <class T, class E>
 auto args__(...) -> decltype(args1__<T, E>(0));
 template <class T, class E>
@@ -1382,98 +1394,115 @@ template <class T, class TEvent, class TDeps>
 decltype(auto) get_arg(const aux::type<T> &, const back::exception<TEvent> &event, TDeps &) {
   return event.exception_;
 }
+template <class T, class... Ts>
+static auto apply(T object, aux::pool<Ts...> &args) {
+  return object(aux::get<Ts>(args)...);
+}
+template <class T, class TEvent, class... Ts>
+static auto apply(T object, const TEvent &event, aux::pool<Ts...> &args) {
+  return object(event, aux::get<Ts>(args)...);
+}
+template <class T, class TEvent, class TSM, class TDeps, class TSubs>
+static auto apply(T object, const TEvent &event, TSM &sm, TDeps &deps, TSubs &subs) {
+  return object(event, sm, deps, subs);
+}
+template <class T, class... TArgs, class... Ts>
+static auto apply(T object, aux::pool<TArgs...> &args, Ts &&... ts) {
+  return object(ts..., aux::get<TArgs>(args)...);
+}
 template <class, class, class>
 struct call;
 template <class TEvent>
 struct call<TEvent, aux::type_list<>, back::no_policy> {
   template <class T, class TSM, class TDeps, class TSubs>
-  static auto execute(T object, const TEvent &, TSM &, TDeps &, TSubs &) {
-    return object();
+  static auto execute(T object, const TEvent &, TSM &, TDeps &deps, TSubs &) {
+    return apply(object, deps.args);
   }
 };
 template <class TEvent, class TLogger>
 struct call<TEvent, aux::type_list<>, TLogger> {
   template <class T, class TSM, class TDeps, class TSubs>
   static auto execute(T object, const TEvent &event, TSM &sm, TDeps &deps, TSubs &) {
-    using result_type = decltype(object());
+    using result_type = decltype(apply(object, deps.args));
     return execute_impl<typename TSM::sm_t>(aux::type<result_type>{}, &sm, object, event, deps);
   }
   template <class TSM, class T, class TDeps, class Q>
   static auto execute_impl(const aux::type<Q> &, const void *sm, T object, const TEvent &event, TDeps &deps) {
-    const auto result = object();
+    const auto result = apply(object, deps.args);
     back::log_call<TSM>(aux::type<TLogger>{}, sm, deps, object, event, result);
     return result;
   }
   template <class TSM, class T, class TDeps>
   static auto execute_impl(const aux::type<void> &, const void *sm, T object, const TEvent &event, TDeps &deps) {
     back::log_call<TSM>(aux::type<TLogger>{}, sm, deps, object, event);
-    object();
+    apply(object, deps.args);
   }
 };
+
 template <class TEvent>
 struct call<TEvent, aux::type_list<TEvent>, back::no_policy> {
   template <class T, class TSM, class TDeps, class TSubs>
-  static auto execute(T object, const TEvent &event, TSM &, TDeps &, TSubs &) {
-    return object(event);
+  static auto execute(T object, const TEvent &event, TSM &, TDeps &deps, TSubs &) {
+    return apply(object, event, deps.args);
   }
 };
 template <class TEvent, class TLogger>
 struct call<TEvent, aux::type_list<TEvent>, TLogger> {
   template <class T, class TSM, class TDeps, class TSubs>
   static auto execute(T object, const TEvent &event, TSM &sm, TDeps &deps, TSubs &) {
-    using result_type = decltype(object(event));
+    using result_type = decltype(apply(object, event, deps.args));
     return execute_impl<typename TSM::sm_t>(aux::type<result_type>{}, &sm, object, event, deps);
   }
   template <class TSM, class T, class TDeps, class Q>
   static auto execute_impl(const aux::type<Q> &, const void *sm, T object, const TEvent &event, TDeps &deps) {
-    const auto result = object(event);
+    const auto result = apply(object, event, deps.args);
     back::log_call<TSM>(aux::type<TLogger>{}, sm, deps, object, event, result);
     return result;
   }
   template <class TSM, class T, class TDeps>
   static auto execute_impl(const aux::type<void> &, const void *sm, T object, const TEvent &event, TDeps &deps) {
     back::log_call<TSM>(aux::type<TLogger>{}, sm, deps, object, event);
-    object();
+    apply(object, event, deps.args);
   }
 };
 template <class TEvent>
 struct call<TEvent, aux::type_list<action_base>, back::no_policy> {
   template <class T, class TSM, class TDeps, class TSubs>
   static auto execute(T object, const TEvent &event, TSM &sm, TDeps &deps, TSubs &subs) {
-    return object(event, sm, deps, subs);
+    return apply(object, event, sm, deps, subs);
   }
 };
 template <class TEvent, class TLogger>
 struct call<TEvent, aux::type_list<action_base>, TLogger> {
   template <class T, class TSM, class TDeps, class TSubs>
   static auto execute(T object, const TEvent &event, TSM &sm, TDeps &deps, TSubs &subs) {
-    return object(event, sm, deps, subs);
+    return apply(object, event, sm, deps, subs);
   }
 };
 template <class TEvent, class... Ts>
 struct call<TEvent, aux::type_list<Ts...>, back::no_policy> {
   template <class T, class TSM, class TDeps, class TSubs>
   static auto execute(T object, const TEvent &event, TSM &, TDeps &deps, TSubs &) {
-    return object(get_arg(aux::type<Ts>{}, event, deps)...);
+    return apply(object, deps.args, get_arg(aux::type<Ts>{}, event, deps)...);
   }
 };
 template <class TEvent, class... Ts, class TLogger>
 struct call<TEvent, aux::type_list<Ts...>, TLogger> {
   template <class T, class TSM, class TDeps, class TSubs>
   static auto execute(T object, const TEvent &event, TSM &sm, TDeps &deps, TSubs &) {
-    using result_type = decltype(object(get_arg(aux::type<Ts>{}, event, deps)...));
+    using result_type = decltype(apply(object, deps.args, get_arg(aux::type<Ts>{}, event, deps)...));
     return execute_impl<typename TSM::sm_t>(aux::type<result_type>{}, &sm, object, event, deps);
   }
   template <class TSM, class T, class TDeps, class Q>
   static auto execute_impl(const aux::type<Q> &, const void *sm, T object, const TEvent &event, TDeps &deps) {
-    const auto result = object(get_arg(aux::type<Ts>{}, event, deps)...);
+    const auto result = apply(object, deps.args, get_arg(aux::type<Ts>{}, event, deps)...);
     back::log_call<TSM>(aux::type<TLogger>{}, sm, deps, object, event, result);
     return result;
   }
   template <class TSM, class T, class TDeps>
   static auto execute_impl(const aux::type<void> &, const void *sm, T object, const TEvent &event, TDeps &deps) {
     back::log_call<TSM>(aux::type<TLogger>{}, sm, deps, object, event);
-    object(get_arg(aux::type<Ts>{}, event, deps)...);
+    apply(object, deps.args, get_arg(aux::type<Ts>{}, event, deps)...);
   }
 };
 template <class... Ts>
@@ -1488,9 +1517,7 @@ class seq_ : operator_base {
  private:
   template <int... Ns, class TEvent, class TSM, class TDeps, class TSubs>
   void for_all(const aux::index_sequence<Ns...> &, const TEvent &event, TSM &sm, TDeps &deps, TSubs &subs) {
-    (void)aux::swallow{
-        0, (call<TEvent, args_t<Ts, TEvent>, typename TSM::logger_t>::execute(aux::get_by_id<Ns>(&a), event, sm, deps, subs),
-            0)...};
+    (call<TEvent, args_t<Ts, TEvent>, typename TSM::logger_t>::execute(aux::get_by_id<Ns>(&a), event, sm, deps, subs), ...);
   }
   aux::tuple<Ts...> a;
 };
@@ -1506,12 +1533,8 @@ class and_ : operator_base {
  private:
   template <int... Ns, class TEvent, class TSM, class TDeps, class TSubs>
   auto for_all(const aux::index_sequence<Ns...> &, const TEvent &event, TSM &sm, TDeps &deps, TSubs &subs) {
-    auto result = true;
-    (void)aux::swallow{
-        0, (call<TEvent, args_t<Ts, TEvent>, typename TSM::logger_t>::execute(aux::get_by_id<Ns>(&g), event, sm, deps, subs)
-                ? result
-                : (result = false))...};
-    return result;
+    return (... &&
+            call<TEvent, args_t<Ts, TEvent>, typename TSM::logger_t>::execute(aux::get_by_id<Ns>(&g), event, sm, deps, subs));
   }
   aux::tuple<Ts...> g;
 };
@@ -1527,12 +1550,8 @@ class or_ : operator_base {
  private:
   template <int... Ns, class TEvent, class TSM, class TDeps, class TSubs>
   auto for_all(const aux::index_sequence<Ns...> &, const TEvent &event, TSM &sm, TDeps &deps, TSubs &subs) {
-    auto result = false;
-    (void)aux::swallow{
-        0, (call<TEvent, args_t<Ts, TEvent>, typename TSM::logger_t>::execute(aux::get_by_id<Ns>(&g), event, sm, deps, subs)
-                ? (result = true)
-                : result)...};
-    return result;
+    return (... ||
+            call<TEvent, args_t<Ts, TEvent>, typename TSM::logger_t>::execute(aux::get_by_id<Ns>(&g), event, sm, deps, subs));
   }
   aux::tuple<Ts...> g;
 };
@@ -1548,7 +1567,7 @@ class not_ : operator_base {
  private:
   T g;
 };
-}
+}  // namespace front
 template <class T, __BOOST_SML_REQUIRES(concepts::callable<bool, T>::value)>
 auto operator!(const T &t) {
   return front::not_<aux::zero_wrapper<T>>(aux::zero_wrapper<T>{t});
@@ -1609,8 +1628,8 @@ struct defer : action_base {
     sm.defer_.push(event);
   }
 };
-}
-}
+}  // namespace actions
+}  // namespace front
 namespace detail {
 template <class T, __BOOST_SML_REQUIRES(concepts::composable<typename T::sm>::value)>
 using state_machine = back::sm<T>;
@@ -1640,7 +1659,7 @@ auto transitional_impl(T &&t) -> aux::always<typename T::dst_state, typename T::
                                              decltype(T::initial), decltype(T::history)>;
 template <class T>
 struct transitional : decltype(transitional_impl(aux::declval<T>())) {};
-}
+}  // namespace concepts
 namespace front {
 namespace actions {
 struct process {
@@ -1675,8 +1694,8 @@ struct process {
     return process_impl<TEvent>{event};
   }
 };
-}
-}
+}  // namespace actions
+}  // namespace front
 namespace front {
 template <class, class>
 struct transition_eg;
@@ -1694,7 +1713,7 @@ struct event {
   }
   auto operator()() const { return TEvent{}; }
 };
-}
+}  // namespace front
 namespace front {
 struct initial_state {};
 struct history_state {};
@@ -1776,7 +1795,7 @@ template <class T>
 struct state_sm<T, aux::enable_if_t<concepts::composable<T>::value>> {
   using type = state<back::sm<back::sm_policy<T>>>;
 };
-}
+}  // namespace front
 namespace front {
 struct internal {};
 template <class, class>
@@ -2200,7 +2219,7 @@ struct transition<state<internal>, state<S2>, front::event<E>, always, none> {
   }
   __BOOST_SML_ZERO_SIZE_ARRAY(aux::byte);
 };
-}
+}  // namespace front
 using _ = back::_;
 template <class TEvent>
 front::event<TEvent> event __BOOST_SML_VT_INIT;
