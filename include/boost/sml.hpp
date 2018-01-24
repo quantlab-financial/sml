@@ -1240,13 +1240,21 @@ class sm {
   sm &operator=(const sm &) = delete;
   sm(aux::init, deps_t &deps, sm_t sm)
       : sm_(sm), deps_(deps), sub_sms_{make_all_subs(typename all_subs<typename sm_all_t::type, deps_t>::type{}, sm_, deps)} {
-    aux::get<sm_impl<TSM>>(sub_sms_).start(deps_, sub_sms_);
+    struct deps : deps_t {
+      deps(const deps_t &ds) : deps_t{ds} {}
+      aux::pool<> args;
+    } ds{deps_};
+    aux::get<sm_impl<TSM>>(sub_sms_).start(ds, sub_sms_);
   }
   template <class... TDeps, __BOOST_SML_REQUIRES(aux::is_unique_t<TDeps...>::value)>
   explicit sm(TDeps &&... deps)
       : deps_{aux::init{}, aux::pool<TDeps...>{deps...}},
         sub_sms_{make_all_subs(typename all_subs<typename sm_all_t::type, deps_t>::type{}, sm_, deps_)} {
-    aux::get<sm_impl<TSM>>(sub_sms_).start(deps_, sub_sms_);
+    struct deps : deps_t {
+      deps(const deps_t &ds) : deps_t{ds} {}
+      aux::pool<> args;
+    } ds{deps_};
+    aux::get<sm_impl<TSM>>(sub_sms_).start(ds, sub_sms_);
   }
   template <class TEvent, class... Ts, __BOOST_SML_REQUIRES(aux::is_base_of<TEvent, events_ids>::value)>
   void process_event(const TEvent &event, Ts &... ts) {
@@ -1531,8 +1539,8 @@ class and_ : operator_base {
  private:
   template <int... Ns, class TEvent, class TSM, class TDeps, class TSubs>
   auto for_all(const aux::index_sequence<Ns...> &, const TEvent &event, TSM &sm, TDeps &deps, TSubs &subs) {
-    return (... &&
-            call<TEvent, args_t<Ts, TEvent>, typename TSM::logger_t>::execute(aux::get_by_id<Ns>(&g), event, sm, deps, subs));
+    return (call<TEvent, args_t<Ts, TEvent>, typename TSM::logger_t>::execute(aux::get_by_id<Ns>(&g), event, sm, deps, subs) &&
+            ...);
   }
   aux::tuple<Ts...> g;
 };
@@ -1548,8 +1556,8 @@ class or_ : operator_base {
  private:
   template <int... Ns, class TEvent, class TSM, class TDeps, class TSubs>
   auto for_all(const aux::index_sequence<Ns...> &, const TEvent &event, TSM &sm, TDeps &deps, TSubs &subs) {
-    return (... ||
-            call<TEvent, args_t<Ts, TEvent>, typename TSM::logger_t>::execute(aux::get_by_id<Ns>(&g), event, sm, deps, subs));
+    return (call<TEvent, args_t<Ts, TEvent>, typename TSM::logger_t>::execute(aux::get_by_id<Ns>(&g), event, sm, deps, subs) ||
+            ...);
   }
   aux::tuple<Ts...> g;
 };
