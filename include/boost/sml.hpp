@@ -6,6 +6,7 @@
 // http://www.boost.org/LICENSE_1_0.txt)
 //
 #pragma once
+#include <utility>
 #if (__cplusplus < 201305L && _MSC_VER < 1900)
 #error "[Boost].SML requires C++14 support (Clang-3.4+, GCC-5.1+, MSVC-2015+)"
 #else
@@ -624,6 +625,7 @@ struct thread_safety_policy__ {};
 struct defer_queue_policy__ {};
 struct logger_policy__ {};
 struct testing_policy__ {};
+struct dispatch_policy__ {};
 struct no_policy {
   using type = no_policy;
   template <class>
@@ -632,19 +634,20 @@ struct no_policy {
   using defer = no_policy;
   __BOOST_SML_ZERO_SIZE_ARRAY(aux::byte);
 };
-template <class>
-no_policy get_policy(...);
-template <class T, class TPolicy>
+template <class TDefault, class>
+TDefault get_policy(...);
+template <class, class T, class TPolicy>
 TPolicy get_policy(aux::pair<T, TPolicy> *);
 template <class, class...>
 struct sm_policy;
 template <class SM, class... TPolicies>
 struct sm_policy {
   using sm = SM;
-  using thread_safety_policy = decltype(get_policy<thread_safety_policy__>((aux::inherit<TPolicies...> *)0));
-  using defer_queue_policy = decltype(get_policy<defer_queue_policy__>((aux::inherit<TPolicies...> *)0));
-  using logger_policy = decltype(get_policy<logger_policy__>((aux::inherit<TPolicies...> *)0));
-  using testing_policy = decltype(get_policy<testing_policy__>((aux::inherit<TPolicies...> *)0));
+  using thread_safety_policy = decltype(get_policy<no_policy, thread_safety_policy__>((aux::inherit<TPolicies...> *)0));
+  using defer_queue_policy = decltype(get_policy<no_policy, defer_queue_policy__>((aux::inherit<TPolicies...> *)0));
+  using logger_policy = decltype(get_policy<no_policy, logger_policy__>((aux::inherit<TPolicies...> *)0));
+  using testing_policy = decltype(get_policy<no_policy, testing_policy__>((aux::inherit<TPolicies...> *)0));
+  using dispatch_policy = decltype(get_policy<struct jump_table, dispatch_policy__>((aux::inherit<TPolicies...> *)0));
   template <class T>
   using rebind = typename rebind_impl<T, TPolicies...>::type;
 };
@@ -911,6 +914,80 @@ struct callable : cimpl<__is_class(T) && !__is_final(T), T> {};
 #define BOOST_SML_DISABLE_EXCEPTIONS !(defined(__cpp_exceptions) || defined(__EXCEPTIONS))
 #endif
 namespace back {
+struct jump_table {
+  template <int, class TMappings, class sm_impl, class State, class TEvent, class TDeps, class TSubs>
+  [[gnu::always_inline]] static bool dispatch(sm_impl &, State &, const TEvent &, TDeps &, TSubs &, const aux::type_list<> &) {
+    return false;
+  }
+  template <int, class TMappings, class sm_impl, class State, class TEvent, class TDeps, class TSubs, class TState,
+            class... TStates>
+  [[gnu::always_inline]] static bool dispatch(sm_impl &self, State &current_state, const TEvent &event, TDeps &deps,
+                                              TSubs &subs, const aux::type_list<TState, TStates...> &) {
+    using dispatch_table_t = bool (*)(const TEvent &, sm_impl &, TDeps &, TSubs &, State &);
+    constexpr static dispatch_table_t dispatch_table[__BOOST_SML_ZERO_SIZE_ARRAY_CREATE(sizeof...(TStates))] = {
+        &get_state_mapping_t<TStates, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl,
+                                                                                                            TDeps, TSubs>...};
+    return dispatch_table[current_state](event, self, deps, subs, current_state);
+  }
+};
+
+struct branch_stm {
+  template <int, class TMappings, class sm_impl, class State, class TEvent, class TDeps, class TSubs>
+  [[gnu::always_inline]] static bool dispatch(sm_impl &, State &, const TEvent &, TDeps &, TSubs &, const aux::type_list<> &) {
+    return false;
+  }
+  template <int N, class TMappings, class sm_impl, class State, class TEvent, class TDeps, class TSubs, class TState,
+            class... TStates>
+  [[gnu::always_inline]] static bool dispatch(sm_impl &self, State &current_state, const TEvent &event, TDeps &deps,
+                                              TSubs &subs, const aux::type_list<TState, TStates...> &) {
+    return current_state == N
+               ? get_state_mapping_t<TState, TMappings, typename sm_impl::has_unexpected_events>::template execute<
+                     TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state)
+               : dispatch<N + 1, TMappings>(self, current_state, event, deps, subs, aux::type_list<TStates...>{});
+    return false;
+  }
+};
+
+struct switch_stm {
+  template <int, class TMappings, class sm_impl, class State, class TEvent, class TDeps, class TSubs>
+  [[gnu::always_inline]] static bool dispatch(sm_impl &, State &, const TEvent &, TDeps &, TSubs &, const aux::type_list<> &) {
+    return false;
+  }
+  template <int N, class TMappings, class sm_impl, class State, class TEvent, class TDeps, class TSubs, class TState,
+            class... TStates>
+  [[gnu::always_inline]] static bool dispatch(sm_impl &self, State &current_state, const TEvent &event, TDeps &deps,
+                                              TSubs &subs, const aux::type_list<TState, TStates...> &) {
+    switch (current_state) {
+      case N:
+        return get_state_mapping_t<TState, TMappings, typename sm_impl::has_unexpected_events>::template execute<
+            TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+      default:
+        return dispatch<N + 1, TMappings>(self, current_state, event, deps, subs, aux::type_list<TStates...>{});
+    }
+    return false;
+  }
+};
+
+struct fold_expr {
+  template <class TMappings, auto... Ns, class sm_impl, class State, class TEvent, class TDeps, class TSubs, class... TStates>
+  [[gnu::always_inline]] static bool dispatch_impl(sm_impl &self, State &current_state, aux::index_sequence<Ns...>,
+                                                   const TEvent &event, TDeps &deps, TSubs &subs,
+                                                   const aux::type_list<TStates...> &states) {
+    return ((current_state == Ns
+                 ? get_state_mapping_t<TStates, TMappings, typename sm_impl::has_unexpected_events>::template execute<
+                       TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state)
+                 : false) ||
+            ...);
+  }
+
+  template <int N, class TMappings, class sm_impl, class State, class TEvent, class TDeps, class TSubs, class... TStates>
+  [[gnu::always_inline]] static bool dispatch(sm_impl &self, State &current_state, const TEvent &event, TDeps &deps,
+                                              TSubs &subs, const aux::type_list<TStates...> &states) {
+    return dispatch_impl<TMappings>(self, current_state, aux::make_index_sequence<sizeof...(TStates)>{}, event, deps, subs,
+                                    states);
+  }
+};
+
 template <class TSM>
 struct sm_impl {
   using sm_t = typename TSM::sm;
@@ -921,6 +998,7 @@ struct sm_impl {
   template <class... Ts>
   using defer_event_t = typename defer_policy_t::template defer<Ts...>;
   using logger_t = typename TSM::logger_policy::type;
+  using dispatch_t = typename TSM::dispatch_policy;
   using transitions_t = decltype(aux::declval<sm_t>().operator()());
   using states_t = aux::apply_t<aux::unique_t, aux::apply_t<get_states, transitions_t>>;
   using states_ids_t = aux::apply_t<aux::type_id, states_t>;
@@ -1047,34 +1125,20 @@ struct sm_impl {
 #endif
   }
 
-  template <int, class TMappings, class TEvent, class TDeps, class TSubs>
-  bool process_event_impl2(state_t &, const TEvent &, TDeps &, TSubs &, const aux::type_list<> &) {
-    return false;
-  }
-
-  template <int N, class TMappings, class TEvent, class TDeps, class TSubs, class TState, class... TStates>
-  bool process_event_impl2(state_t &current_state, const TEvent &event, TDeps &deps, TSubs &subs,
-                           const aux::type_list<TState, TStates...> &) {
-    return current_state == N
-               ? get_state_mapping_t<TState, TMappings, has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(
-                     event, *this, deps, subs, current_state)
-               : process_event_impl2<N + 1, TMappings>(current_state, event, deps, subs, aux::type_list<TStates...>{});
-  }
-
   template <class TMappings, class TEvent, class TDeps, class TSubs, class... TStates>
   bool process_event_impl(const TEvent &event, TDeps &deps, TSubs &subs, const aux::type_list<TStates...> &states,
                           aux::index_sequence<0>) {
-    return process_event_impl2<0, TMappings>(current_state_[0], event, deps, subs, states);
+    return dispatch_t::template dispatch<0, TMappings>(*this, current_state_[0], event, deps, subs, states);
   }
   template <class TMappings, class TEvent, class TDeps, class TSubs, class... TStates, int... Ns>
   bool process_event_impl(const TEvent &event, TDeps &deps, TSubs &subs, const aux::type_list<TStates...> &states,
                           aux::index_sequence<Ns...>) {
-    return (process_event_impl2<0, TMappings>(current_state_[Ns], event, deps, subs, states) | ...);
+    return (dispatch_t::template dispatch<0, TMappings>(*this, current_state_[Ns], event, deps, subs, states) | ...);
   }
   template <class TMappings, class TEvent, class TDeps, class TSubs, class... TStates>
   bool process_event_impl(const TEvent &event, TDeps &deps, TSubs &subs, const aux::type_list<TStates...> &states,
                           state_t &current_state) {
-    return process_event_impl2<0, TMappings>(current_state, event, deps, subs, states);
+    return dispatch_t::template dispatch<0, TMappings>(*this, current_state, event, deps, subs, states);
   }
 #if !BOOST_SML_DISABLE_EXCEPTIONS
   template <class TMappings, class TEvent, class TDeps, class TSubs>
@@ -1656,6 +1720,10 @@ struct logger : aux::pair<back::logger_policy__, logger<T>> {
   using type = T;
 };
 struct testing : aux::pair<back::testing_policy__, testing> {};
+template <class T>
+struct dispatch : aux::pair<back::dispatch_policy__, T> {
+  using type = T;
+};
 template <class T, class... TPolicies>
 using sm = detail::state_machine<back::sm_policy<T, TPolicies...>>;
 namespace concepts {
