@@ -647,7 +647,7 @@ struct sm_policy {
   using defer_queue_policy = decltype(get_policy<no_policy, defer_queue_policy__>((aux::inherit<TPolicies...> *)0));
   using logger_policy = decltype(get_policy<no_policy, logger_policy__>((aux::inherit<TPolicies...> *)0));
   using testing_policy = decltype(get_policy<no_policy, testing_policy__>((aux::inherit<TPolicies...> *)0));
-  using dispatch_policy = decltype(get_policy<struct jump_table, dispatch_policy__>((aux::inherit<TPolicies...> *)0));
+  using dispatch_policy = decltype(get_policy<struct branch_stm, dispatch_policy__>((aux::inherit<TPolicies...> *)0));
   template <class T>
   using rebind = typename rebind_impl<T, TPolicies...>::type;
 };
@@ -919,10 +919,9 @@ struct jump_table {
   [[gnu::always_inline]] static bool dispatch(sm_impl &, State &, const TEvent &, TDeps &, TSubs &, const aux::type_list<> &) {
     return false;
   }
-  template <int, class TMappings, class sm_impl, class State, class TEvent, class TDeps, class TSubs, class TState,
-            class... TStates>
+  template <int, class TMappings, class sm_impl, class State, class TEvent, class TDeps, class TSubs, class... TStates>
   [[gnu::always_inline]] static bool dispatch(sm_impl &self, State &current_state, const TEvent &event, TDeps &deps,
-                                              TSubs &subs, const aux::type_list<TState, TStates...> &) {
+                                              TSubs &subs, const aux::type_list<TStates...> &) {
     using dispatch_table_t = bool (*)(const TEvent &, sm_impl &, TDeps &, TSubs &, State &);
     constexpr static dispatch_table_t dispatch_table[__BOOST_SML_ZERO_SIZE_ARRAY_CREATE(sizeof...(TStates))] = {
         &get_state_mapping_t<TStates, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl,
