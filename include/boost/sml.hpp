@@ -695,7 +695,8 @@ void log_call(const aux::type<TLogger> &, const void *sm, TDeps &deps, const TAc
 template <class SM, class TLogger, class TDeps, class TAction, class TEvent>
 void log_call(const aux::type<TLogger> &, const void *sm, TDeps &deps, const aux::zero_wrapper<TAction> &action,
               const TEvent &event) {
-  return static_cast<aux::pool_type<TLogger &> &>(deps).value.template log_call<SM>(sm, action.get(), event);
+  return static_cast<aux::pool_type<TLogger &> &>(deps).value.template log_call<SM>(sm, static_cast<const TAction &>(action),
+                                                                                    event);
 }
 template <class, class TDeps, class TGuard, class TEvent, class Q>
 void log_call(const aux::type<no_policy> &, const void *, TDeps &, const TGuard &, const TEvent &, Q) {}
