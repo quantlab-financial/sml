@@ -1304,8 +1304,8 @@ class sm {
   sm &operator=(const sm &) = delete;
   sm(aux::init, deps_t &deps, sm_t sm)
       : sm_(sm), deps_(deps), sub_sms_{make_all_subs(typename all_subs<typename sm_all_t::type, deps_t>::type{}, sm_, deps)} {
-    struct deps : deps_t {
-      deps(const deps_t &ds) : deps_t{ds} {}
+    struct _deps : deps_t {
+      _deps(const deps_t &ds) : deps_t{ds} {}
       aux::pool<> args;
     } ds{deps_};
     aux::get<sm_impl<TSM>>(sub_sms_).start(ds, sub_sms_);
@@ -1314,8 +1314,8 @@ class sm {
   explicit sm(TDeps &&... deps)
       : deps_{aux::init{}, aux::pool<TDeps...>{deps...}},
         sub_sms_{make_all_subs(typename all_subs<typename sm_all_t::type, deps_t>::type{}, sm_, deps_)} {
-    struct deps : deps_t {
-      deps(const deps_t &ds) : deps_t{ds} {}
+    struct _deps : deps_t {
+      _deps(const deps_t &ds) : deps_t{ds} {}
       aux::pool<> args;
     } ds{deps_};
     aux::get<sm_impl<TSM>>(sub_sms_).start(ds, sub_sms_);
