@@ -293,8 +293,11 @@ struct pool_type {
 };
 template <class T>
 T &try_get(...) {
-  if constexpr (aux::is_constructible<aux::remove_reference_t<T>>::value) {
-    static std::remove_reference_t<T> t{};
+  using type = std::remove_reference_t<T>;
+  if constexpr (aux::is_constructible<type>::value) {
+    static type t{};
+    t.~type();
+    new (&t) type{};
     return t;
   } else {
     static_assert(never<T>::value, "Type T has to be passed via constructor!");
