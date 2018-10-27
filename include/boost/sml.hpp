@@ -1484,9 +1484,20 @@ template <class T, class TEvent, class TSM, class TDeps, class TSubs>
 static auto apply(T object, const TEvent &event, TSM &sm, TDeps &deps, TSubs &subs) {
   return object(event, sm, deps, subs);
 }
+template <auto>
+struct priority {};
+template <class T, class... TArgs, class... Ts>
+static auto apply_impl(priority<1>, T object, aux::pool<TArgs...> &args, Ts &&... ts)
+    -> decltype(object(std::forward<Ts>(ts)..., aux::get<TArgs>(args)...)) {
+  return object(std::forward<Ts>(ts)..., aux::get<TArgs>(args)...);
+}
+template <auto X, class T, class... TArgs, class... Ts>
+static auto apply_impl(priority<X>, T object, aux::pool<TArgs...> &, Ts &&... ts) -> decltype(object(std::forward<Ts>(ts)...)) {
+  return object(std::forward<Ts>(ts)...);
+}
 template <class T, class... TArgs, class... Ts>
 static auto apply(T object, aux::pool<TArgs...> &args, Ts &&... ts) {
-  return object(std::forward<Ts>(ts)..., aux::get<TArgs>(args)...);
+  return apply_impl(priority<1>{}, object, args, ts...);
 }
 template <class, class, class>
 struct call;
