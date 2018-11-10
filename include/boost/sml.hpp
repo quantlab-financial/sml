@@ -291,7 +291,8 @@ struct pool_type {
   constexpr pool_type(const init &i, const TObject &object) : value(i, object) {}
   T value;
 };
-template <class T>
+
+template <class T, std::enable_if_t<not std::is_const_v<std::remove_reference_t<T>>, int> = 0>
 T &try_get(...) {
   using type = std::remove_reference_t<T>;
   if constexpr (aux::is_constructible<type>::value) {
@@ -303,10 +304,23 @@ T &try_get(...) {
     static_assert(never<T>::value, "Type T has to be passed via constructor!");
   }
 }
+
+template <class T, class TPool, std::enable_if_t<std::is_const_v<std::remove_reference_t<T>>, int> = 0>
+decltype(auto) try_get(TPool *object) {
+  if constexpr (std::is_convertible_v<TPool, pool_type<T>>) {
+    return static_cast<pool_type<T> &>(*object).value;
+  } else if constexpr (std::is_reference_v<T>) {
+    return try_get<std::remove_const_t<std::remove_reference_t<T>> &>(object);
+  } else {
+    return try_get<T>(object);
+  }
+}
+
 template <class T>
 constexpr T &try_get(pool_type<T> *object) {
   return static_cast<pool_type<T> &>(*object).value;
 }
+
 template <class T, class TPool>
 constexpr T &get(TPool &p) {
   return static_cast<pool_type<T> &>(p).value;
@@ -743,12 +757,13 @@ struct transitions<T> {
     return execute_impl(event, sm, deps, subs, current_state);
   }
   template <class TEvent, class SM, class TDeps, class TSubs>
-  constexpr static bool execute_impl(const TEvent &event, SM &sm, TDeps &deps, TSubs &subs, typename SM::state_t &current_state) {
+  constexpr static bool execute_impl(const TEvent &event, SM &sm, TDeps &deps, TSubs &subs,
+                                     typename SM::state_t &current_state) {
     return aux::get<T>(sm.transitions_).execute(event, sm, deps, subs, current_state, typename SM::has_entry_exits{});
   }
   template <class _, class TEvent, class SM, class TDeps, class TSubs>
   constexpr static bool execute_impl(const on_exit<_, TEvent> &event, SM &sm, TDeps &deps, TSubs &subs,
-                           typename SM::state_t &current_state) {
+                                     typename SM::state_t &current_state) {
     aux::get<T>(sm.transitions_).execute(event, sm, deps, subs, current_state, typename SM::has_entry_exits{});
     return false;
   }
@@ -783,13 +798,14 @@ struct transitions_sub<sm<TSM>, T, Ts...> {
     return false;
   }
   template <class TEvent, class SM, class TDeps, class TSubs>
-  constexpr static bool execute_impl(const TEvent &event, SM &sm, TDeps &deps, TSubs &subs, typename SM::state_t &current_state) {
+  constexpr static bool execute_impl(const TEvent &event, SM &sm, TDeps &deps, TSubs &subs,
+                                     typename SM::state_t &current_state) {
     const auto handled = sub_sm<sm_impl<TSM>>::get(&subs).process_event(event, deps, subs);
     return handled ? handled : transitions<T, Ts...>::execute(event, sm, deps, subs, current_state);
   }
   template <class _, class TEvent, class SM, class TDeps, class TSubs>
   constexpr static bool execute_impl(const back::on_entry<_, TEvent> &event, SM &sm, TDeps &deps, TSubs &subs,
-                           typename SM::state_t &current_state) {
+                                     typename SM::state_t &current_state) {
     transitions<T, Ts...>::execute(event, sm, deps, subs, current_state);
     sub_sm<sm_impl<TSM>>::get(&subs).process_event(event, deps, subs);
     return true;
@@ -897,7 +913,6 @@ template <class T, class TMappings, class TUnexpected>
 using get_state_mapping_t = typename get_state_mapping<T, TMappings, TUnexpected>::type;
 template <class>
 transitions<aux::true_type> get_event_mapping_impl(...);
-
 
 template <class>
 transitions<aux::true_type> get_event_mapping_impl(...);
