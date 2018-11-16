@@ -23,7 +23,7 @@
 #define __BOOST_SML_UNUSED __attribute__((unused))
 #define __BOOST_SML_VT_INIT \
   {}
-#define __BOOST_SML_ZERO_SIZE_ARRAY(...) __VA_ARGS__ _[0]
+#define __BOOST_SML_ZERO_SIZE_ARRAY(...) __VA_ARGS__ _[0]{}
 #define __BOOST_SML_ZERO_SIZE_ARRAY_CREATE(...)
 #define __BOOST_SML_TEMPLATE_KEYWORD template
 #pragma clang diagnostic push
@@ -397,6 +397,7 @@ template <class, class>
 struct zero_wrapper_impl;
 template <class TExpr, class... TArgs>
 struct zero_wrapper_impl<TExpr, type_list<TArgs...>> {
+  constexpr zero_wrapper_impl() {}
   constexpr auto operator()(TArgs... args) const { return reinterpret_cast<const TExpr &>(*this)(args...); }
   __BOOST_SML_ZERO_SIZE_ARRAY(byte);
 };
