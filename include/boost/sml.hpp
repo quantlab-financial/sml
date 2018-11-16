@@ -397,7 +397,7 @@ template <class, class>
 struct zero_wrapper_impl;
 template <class TExpr, class... TArgs>
 struct zero_wrapper_impl<TExpr, type_list<TArgs...>> {
-  constexpr zero_wrapper_impl() {}
+  constexpr zero_wrapper_impl() = default;
   constexpr auto operator()(TArgs... args) const { return reinterpret_cast<const TExpr &>(*this)(args...); }
   __BOOST_SML_ZERO_SIZE_ARRAY(byte);
 };
