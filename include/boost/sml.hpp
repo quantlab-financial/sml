@@ -7,6 +7,7 @@
 //
 #pragma once
 #include <utility>
+#include <array>
 #if (__cplusplus < 201305L && _MSC_VER < 1900)
 #error "[Boost].SML requires C++14 support (Clang-3.4+, GCC-5.1+, MSVC-2015+)"
 #else
@@ -296,10 +297,9 @@ template <class T, std::enable_if_t<not std::is_const_v<std::remove_reference_t<
 T &try_get(...) {
   using type = std::remove_reference_t<T>;
   if constexpr (aux::is_constructible<type>::value) {
-    static type t{};
-    t.~type();
-    new (&t) type{};
-    return t;
+    static auto i = 0;
+    static std::array<type, 16> t{};
+    return t[i++];
   } else {
     static_assert(never<T>::value, "Type T has to be passed via constructor!");
   }
