@@ -6,8 +6,8 @@
 // http://www.boost.org/LICENSE_1_0.txt)
 //
 #pragma once
-#include <utility>
 #include <array>
+#include <utility>
 #if (__cplusplus < 201305L && _MSC_VER < 1900)
 #error "[Boost].SML requires C++14 support (Clang-3.4+, GCC-5.1+, MSVC-2015+)"
 #else
@@ -24,7 +24,8 @@
 #define __BOOST_SML_UNUSED __attribute__((unused))
 #define __BOOST_SML_VT_INIT \
   {}
-#define __BOOST_SML_ZERO_SIZE_ARRAY(...) __VA_ARGS__ _[0]{}
+#define __BOOST_SML_ZERO_SIZE_ARRAY(...) \
+  __VA_ARGS__ _[0] {}
 #define __BOOST_SML_ZERO_SIZE_ARRAY_CREATE(...)
 #define __BOOST_SML_TEMPLATE_KEYWORD template
 #pragma clang diagnostic push
@@ -1345,11 +1346,15 @@ class sm {
  public:
   using type = sm_t;
   sm(sm &&other)
-      : deps_(other.deps_),
-        sm_(other.sm_),
+      : deps_(std::move(other).deps_),
+        sm_(std::move(other).sm_),
         sub_sms_{make_all_subs(typename all_subs<typename sm_all_t::type, deps_t>::type{}, sm_, other.deps_)} {}
   sm(const sm &) = delete;
   sm &operator=(const sm &) = delete;
+  sm(sm_t sm)
+      : sm_{std::move(sm)},
+        deps_{},
+        sub_sms_{make_all_subs(typename all_subs<typename sm_all_t::type, deps_t>::type{}, sm_, deps_)} {}
   sm(aux::init, deps_t &deps, sm_t sm)
       : sm_(sm), deps_(deps), sub_sms_{make_all_subs(typename all_subs<typename sm_all_t::type, deps_t>::type{}, sm_, deps)} {
     struct _deps : deps_t {
