@@ -1351,9 +1351,10 @@ class sm {
         sub_sms_{make_all_subs(typename all_subs<typename sm_all_t::type, deps_t>::type{}, sm_, other.deps_)} {}
   sm(const sm &) = delete;
   sm &operator=(const sm &) = delete;
-  sm(sm_t sm)
+  template <class... TDeps, __BOOST_SML_REQUIRES(aux::is_unique_t<TDeps...>::value)>
+  sm(sm_t sm, TDeps &&... deps)
       : sm_{std::move(sm)},
-        deps_{},
+        deps_{aux::init{}, aux::pool<TDeps...>{deps...}},
         sub_sms_{make_all_subs(typename all_subs<typename sm_all_t::type, deps_t>::type{}, sm_, deps_)} {}
   sm(aux::init, deps_t &deps, sm_t sm)
       : sm_(sm), deps_(deps), sub_sms_{make_all_subs(typename all_subs<typename sm_all_t::type, deps_t>::type{}, sm_, deps)} {
