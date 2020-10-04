@@ -6,7 +6,6 @@
 // http://www.boost.org/LICENSE_1_0.txt)
 //
 #pragma once
-#include <array>
 #include <utility>
 #if (__cplusplus < 201305L && _MSC_VER < 1900)
 #error "[Boost].SML requires C++14 support (Clang-3.4+, GCC-5.1+, MSVC-2015+)"
@@ -286,46 +285,49 @@ constexpr T &get_by_id(tuple_type<N, T> *object) {
   return static_cast<tuple_type<N, T> &>(*object).value;
 }
 struct init {};
-template <class T>
-struct pool_type {
-  constexpr explicit pool_type(const T &object) : value(object) {}
+
+template <class T, class = void>
+struct pool_type_impl {
+  constexpr explicit pool_type_impl(T value) : value{value} {}
   template <class TObject>
-  constexpr pool_type(const init &i, const TObject &object) : value(i, object) {}
+  constexpr pool_type_impl(const init &i, const TObject &object) : value(i, object) {}
   T value;
 };
 
-template <class T, std::enable_if_t<not std::is_const_v<std::remove_reference_t<T>>, int> = 0>
-T &try_get(...) {
-  using type = std::remove_reference_t<T>;
-  if constexpr (aux::is_constructible<type>::value) {
-    static auto i = 0;
-    static std::array<type, 16> t{};
-    return t[i++];
+template <class T>
+struct pool_type_impl<T&, aux::enable_if_t<aux::is_constructible<T>::value>> {
+  constexpr explicit pool_type_impl(T& value) : value{value} {}
+  template<class TObject>
+  constexpr explicit pool_type_impl(TObject value) : value_{value}, value{value_} {}
+  template <class TObject>
+  constexpr pool_type_impl(const init &i, const TObject &object) : value(i, object) {}
+  T value_{};
+  T& value;
+};
+
+template <class T>
+struct pool_type : pool_type_impl<T> {
+  using pool_type_impl<T>::pool_type_impl;
+};
+
+template <class T, class TPool>
+constexpr decltype(auto) try_get(const TPool &p) {
+  if constexpr (aux::is_base_of<const pool_type<T>, TPool>::value) {
+    return static_cast<const pool_type<T> &>(p).value;
+  } else if constexpr (aux::is_base_of<pool_type<T>, TPool>::value) {
+    return static_cast<pool_type<T> &>(p).value;
+  } else if constexpr (aux::is_constructible<aux::remove_reference_t<T>>::value) {
+    return aux::remove_reference_t<T>{};
   } else {
     static_assert(never<T>::value, "Type T has to be passed via constructor!");
   }
-}
-
-template <class T, class TPool, std::enable_if_t<std::is_const_v<std::remove_reference_t<T>>, int> = 0>
-decltype(auto) try_get(TPool *object) {
-  if constexpr (std::is_convertible_v<TPool, pool_type<T>>) {
-    return static_cast<pool_type<T> &>(*object).value;
-  } else if constexpr (std::is_reference_v<T>) {
-    return try_get<std::remove_const_t<std::remove_reference_t<T>> &>(object);
-  } else {
-    return try_get<T>(object);
-  }
-}
-
-template <class T>
-constexpr T &try_get(pool_type<T> *object) {
-  return static_cast<pool_type<T> &>(*object).value;
 }
 
 template <class T, class TPool>
 constexpr T &get(TPool &p) {
   return static_cast<pool_type<T> &>(p).value;
 }
+
 template <class T, class TPool>
 constexpr const T &cget(TPool &p) {
   return static_cast<const pool_type<T> &>(p).value;
@@ -335,7 +337,7 @@ struct pool : pool_type<Ts>... {
   using boost_di_inject__ = type_list<Ts...>;
   constexpr explicit pool(Ts... ts) : pool_type<Ts>(ts)... {}
   template <class... TArgs>
-  constexpr pool(init &&, pool<TArgs...> &&p) : pool_type<Ts>(try_get<Ts>(&p))... {}
+  constexpr pool(init, const pool<TArgs...> &p) : pool_type<Ts>(try_get<Ts>(p))... {}
   template <class... TArgs>
   constexpr pool(const pool<TArgs...> &p) : pool_type<Ts>(init{}, p)... {}
 };
