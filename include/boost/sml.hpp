@@ -1460,6 +1460,10 @@ template <class T, class TEvent, class TDeps>
 decltype(auto) get_arg(const aux::type<T> &, const TEvent &, TDeps &deps) {
   return aux::get<T>(deps.deps);
 }
+template <class T, class TEvent, class TDeps>
+decltype(auto) get_arg(const aux::type<const T&> &, const TEvent &, TDeps &deps) {
+  return aux::get<T&>(deps.deps);
+}
 template <class TEvent, class TDeps>
 decltype(auto) get_arg(const aux::type<TEvent> &, const TEvent &event, TDeps &) {
   return event;
