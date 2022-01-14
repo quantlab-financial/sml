@@ -398,3 +398,22 @@ test sm_current_state = [] {
   sm.is("s1"_s);
 };
 #endif
+
+test sm_dispatch = [] {
+  struct c {
+    int a_called{};
+    auto operator()() noexcept {
+      using namespace sml;
+      return make_dispatch_table(event<e1> / [this] {++a_called; });
+    }
+  };
+
+  sml::sm<c> sm;
+  expect(0 == a_called);
+
+  sm.process_event(e1{});
+  expect(1 == a_called);
+
+  sm.process_event(e2{});
+  expect(1 == a_called);
+};

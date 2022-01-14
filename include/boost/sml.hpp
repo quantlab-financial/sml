@@ -1066,7 +1066,7 @@ struct sm_impl {
   using deps = aux::apply_t<merge_deps, transitions_t>;
   using state_t = aux::conditional_t<(aux::size<states_t>::value > 0xFF), unsigned short, aux::byte>;
   static constexpr auto regions = aux::size<initial_states_t>::value;
-  static_assert(regions > 0, "At least one initial state is required");
+  static_assert(regions > 0 || aux::is_same<aux::type_list<void>, states_t>::value, "At least one initial state is required");
 #if !BOOST_SML_DISABLE_EXCEPTIONS
   using exceptions = aux::apply_t<aux::unique_t, aux::apply_t<get_exceptions, events_t>>;
   using has_exceptions = aux::integral_constant<bool, (aux::size<exceptions>::value > 0)>;
@@ -1168,6 +1168,12 @@ struct sm_impl {
     return process_event_noexcept<get_event_mapping_t<get_mapped_t<TEvent>, mappings>>(event, deps, subs, current_state,
                                                                                        has_exceptions{});
 #endif
+  }
+  template <class TMappings, class TEvent, class TDeps, class TSubs, class TState>
+  bool process_event_impl(const TEvent &event, TDeps &deps, TSubs &subs, const aux::type_list<TState> &, aux::index_sequence<>) {
+    aux::byte unused{};
+    get_state_mapping_t<TState, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, *this, deps, subs, unused);
+    return true;
   }
 
   template <class TMappings, class TEvent, class TDeps, class TSubs, class... TStates>
@@ -1957,9 +1963,25 @@ struct transition<front::event<E>, G> {
 };
 template <class E, class G, class A>
 struct transition<front::event<E>, G, A> {
+  static constexpr auto initial = state<void>::initial;
+  static constexpr auto history = state<void>::history;
+  using src_state = typename state<void>::type;
+  using dst_state = typename state<void>::type;
+  using event = E;
+  using deps = aux::apply_t<aux::unique_t, aux::join_t<get_deps_t<G, E>, get_deps_t<A, E>>>;
+  using guard = G;
+  using action = A;
   front::event<E> e;
   G g;
   A a;
+  template <class TEvent, class SM, class TDeps, class TSubs, class... Ts>
+  bool execute(const TEvent &event, SM &sm, TDeps &deps, TSubs &subs, typename SM::state_t &, Ts &&...) {
+    if (call<TEvent, args_t<G, TEvent>, typename SM::logger_t>::execute(g, event, sm, deps, subs)) {
+      call<TEvent, args_t<A, TEvent>, typename SM::logger_t>::execute(a, event, sm, deps, subs);
+      return true;
+    }
+    return false;
+  }
 };
 template <class S2, class G, class A>
 struct transition<state<S2>, G, A> : transition<state<internal>, state<S2>, front::event<back::anonymous>, G, A> {
@@ -2020,8 +2042,21 @@ struct transition_eg<front::event<E>, G> {
 };
 template <class E, class A>
 struct transition_ea<front::event<E>, A> {
+  static constexpr auto initial = state<void>::initial;
+  static constexpr auto history = state<void>::history;
+  using src_state = typename state<void>::type;
+  using dst_state = typename state<void>::type;
+  using event = E;
+  using deps = aux::apply_t<aux::unique_t, get_deps_t<A, E>>;
+  using guard = always;
+  using action = A;
   front::event<E> e;
   A a;
+  template <class TEvent, class SM, class TDeps, class TSubs, class... Ts>
+  bool execute(const TEvent &event, SM &sm, TDeps &deps, TSubs &subs, typename SM::state_t &, Ts &&...) {
+    call<TEvent, args_t<A, TEvent>, typename SM::logger_t>::execute(a, event, sm, deps, subs);
+    return true;
+  }
 };
 template <class S1, class S2, class G, class A>
 struct transition<state<S1>, transition<state<S2>, G, A>>
@@ -2368,6 +2403,10 @@ __BOOST_SML_UNUSED static front::actions::process process;
 template <class... Ts, __BOOST_SML_REQUIRES(aux::is_same<aux::bool_list<aux::always<Ts>::value...>,
                                                          aux::bool_list<concepts::transitional<Ts>::value...>>::value)>
 auto make_transition_table(Ts... ts) {
+  return aux::pool<Ts...>{ts...};
+}
+template <class... Ts>
+auto make_dispatch_table(Ts... ts) {
   return aux::pool<Ts...>{ts...};
 }
 BOOST_SML_NAMESPACE_END
