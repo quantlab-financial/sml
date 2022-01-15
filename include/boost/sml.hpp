@@ -491,6 +491,12 @@ struct event_type {
   using generic_t = TEvent;
   using mapped_t = void;
 };
+template <class TEvent, class... TEvents>
+struct event_type<aux::type_list<TEvent, TEvents...>> {
+  using event_t = TEvent;
+  using generic_t = TEvent;
+  using mapped_t = void;
+};
 template <class TEvent>
 struct event_type<exception<TEvent>> {
   using event_t = TEvent;
@@ -538,6 +544,10 @@ struct get_all_events_impl {
 template <class TSrc, class TDst, class TEvent>
 struct get_all_events_impl<TSrc, TDst, unexpected_event<TEvent>> {
   using type = aux::type_list<TEvent>;
+};
+template <class TSrc, class TDst, class... TEvents>
+struct get_all_events_impl<TSrc, TDst, aux::type_list<TEvents...>> {
+  using type = aux::type_list<TEvents...>;
 };
 template <class TSrc, class TDst, class TEvent>
 struct get_all_events_impl<sm<TSrc>, TDst, TEvent> {
@@ -848,6 +858,11 @@ struct event_mappings<E, aux::inherit<Ts...>> {
   using element_type = event<E>;
   using types = aux::type_list<Ts...>;
 };
+template <class E, class... Es, class... Ts>
+struct event_mappings<aux::type_list<E, Es...>, aux::inherit<Ts...>> {
+  using element_type = event<E>;
+  using types = aux::type_list<Ts...>;
+};
 template <class...>
 struct unique_mappings;
 template <class, class...>
@@ -890,10 +905,27 @@ template <class T>
 struct unique_mappings<T> : aux::inherit<T> {};
 template <class, class...>
 struct mappings;
+template<class T, class TEvent>
+struct event_mappings_impl {
+  using type = aux::type_list<
+    event_mappings<TEvent, aux::inherit<state_mappings<typename T::src_state, aux::type_list<T>>>>
+  >;
+};
+template<class T, class... TEvents>
+struct event_mappings_impl<T, aux::type_list<TEvents...>> {
+  using type = aux::type_list<
+    event_mappings<TEvents, aux::inherit<state_mappings<typename T::src_state, aux::type_list<T>>>>...
+  >;
+};
 template <class... Ts>
 struct mappings<aux::pool<Ts...>>
-    : unique_mappings_t<
-          event_mappings<typename Ts::event, aux::inherit<state_mappings<typename Ts::src_state, aux::type_list<Ts>>>>...> {};
+  : aux::apply_t<
+      unique_mappings_t,
+      aux::join_t<
+        typename event_mappings_impl<Ts, typename Ts::event>::type...
+      >
+    >
+{};
 template <class T>
 using mappings_t = typename mappings<T>::type;
 template <class, class TUnexpected>
@@ -2372,8 +2404,10 @@ struct transition<state<internal>, state<S2>, front::event<E>, always, none> {
 };
 }  // namespace front
 using _ = back::_;
-template <class TEvent>
-front::event<TEvent> event __BOOST_SML_VT_INIT;
+template <class... TEvents>
+front::event<aux::type_list<TEvents...>> event __BOOST_SML_VT_INIT;
+template <class... TEvents>
+front::event<aux::type_list<TEvents...>> event<boost::mp11::mp_list<TEvents...>> __BOOST_SML_VT_INIT;
 template <class TEvent>
 __BOOST_SML_UNUSED front::event<back::on_entry<_, TEvent>> on_entry __BOOST_SML_VT_INIT;
 template <class TEvent>
