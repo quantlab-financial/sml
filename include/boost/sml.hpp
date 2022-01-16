@@ -7,6 +7,7 @@
 //
 #pragma once
 #include <utility>
+#include <tuple>
 #if (__cplusplus < 201305L && _MSC_VER < 1900)
 #error "[Boost].SML requires C++14 support (Clang-3.4+, GCC-5.1+, MSVC-2015+)"
 #else
@@ -62,6 +63,22 @@
 BOOST_SML_NAMESPACE_BEGIN
 #define __BOOST_SML_REQUIRES(...) typename aux::enable_if<__VA_ARGS__, int>::type = 0
 namespace aux {
+template <class>
+inline constexpr auto is_tuple_impl = false;
+template <class... Ts>
+inline constexpr auto is_tuple_impl<std::tuple<Ts...>> = true;
+template <class T>
+concept is_tuple = is_tuple_impl<std::remove_cvref_t<T>>;
+template <class TEvent>
+auto on(const TEvent &) -> void {}
+template <class TEvent, class THandler, class... TArgs>
+auto on(const TEvent &event, THandler &handler, TArgs &&... args) -> void {
+  if constexpr (requires { handler.on(event, args...); }) {
+    handler.on(event, static_cast<TArgs &&>(args)...);
+  } else if constexpr (requires { handler(event, args...); }) {
+    handler(event, static_cast<TArgs &&>(args)...);
+  }
+}
 using byte = unsigned char;
 struct none_type {};
 template <class...>
@@ -1487,6 +1504,7 @@ struct composable : aux::is<aux::pool, decltype(composable_impl<T>(0))> {};
 namespace front {
 struct operator_base {};
 struct action_base {};
+struct expr_base {};
 template <class, class>
 aux::type_list<action_base> args2__(...);
 template <class T, class>
@@ -1778,6 +1796,27 @@ struct defer : action_base {
     sm.defer_.push(event);
   }
 };
+template<class TExpr>
+struct emit : action_base, expr_base {
+  using expr_t = TExpr;
+
+  constexpr explicit(true) emit(TExpr expr) : expr{expr} {}
+
+  template <class TEvent, class TSM, class TDeps, class TSubs>
+  auto operator()(const TEvent & event, TSM &, TDeps & deps, TSubs &) {
+    return [&]<template <class...> class TList, class... Ts>(TList<Ts...>) {
+      return [&]<class... TArgs>(aux::tuple<TArgs...>& args) {
+        using expr_t = decltype(apply(expr, deps.args, get_arg(aux::type<Ts>{}, event, deps)...));
+        aux::on(apply(expr, deps.args, get_arg(aux::type<Ts>{}, event, deps)...), aux::get_by_type<TArgs>(&args)...);
+        return boost::mp11::mp_list<expr_t>{};
+      }(deps.args);
+    }
+    (args_t<TExpr, TEvent>{});
+  }
+
+ private:
+  TExpr expr{};
+};
 }  // namespace actions
 }  // namespace front
 namespace detail {
@@ -1973,6 +2012,10 @@ using get_deps_t = typename get_deps<T, E>::type;
 template <template <class...> class T, class... Ts, class E>
 struct get_deps<T<Ts...>, E, aux::enable_if_t<aux::is_base_of<operator_base, T<Ts...>>::value>> {
   using type = aux::join_t<get_deps_t<Ts, E>...>;
+};
+template <template <class...> class T, class... Ts, class E>
+struct get_deps<T<Ts...>, E, aux::enable_if_t<aux::is_base_of<expr_base, T<Ts...>>::value>> {
+  using type = typename ignore<E, args_t<typename T<Ts...>::expr_t, E>>::type;
 };
 struct always {
   bool operator()() const { return true; }
@@ -2433,6 +2476,10 @@ auto operator""_e() {
 __BOOST_SML_UNUSED static front::state<back::terminate_state> X;
 __BOOST_SML_UNUSED static front::history_state H;
 __BOOST_SML_UNUSED static front::actions::defer defer;
+namespace front {
+__BOOST_SML_UNUSED static auto emit = [](auto expr) { return front::actions::emit{expr}; };
+__BOOST_SML_UNUSED static auto fwd = []<class TEvent>(const TEvent& event, auto&... args) { aux::on(event, args...); return boost::mp11::mp_list<TEvent>{}; };
+}
 __BOOST_SML_UNUSED static front::actions::process process;
 template <class... Ts, __BOOST_SML_REQUIRES(aux::is_same<aux::bool_list<aux::always<Ts>::value...>,
                                                          aux::bool_list<concepts::transitional<Ts>::value...>>::value)>
