@@ -1803,15 +1803,19 @@ struct emit : action_base, expr_base {
   constexpr explicit(true) emit(TExpr expr) : expr{expr} {}
 
   template <class TEvent, class TSM, class TDeps, class TSubs>
-  auto operator()(const TEvent & event, TSM &, TDeps & deps, TSubs &) {
-    return [&]<template <class...> class TList, class... Ts>(TList<Ts...>) {
-      return [&]<class... TArgs>(aux::tuple<TArgs...>& args) {
-        using expr_t = decltype(apply(expr, deps.args, get_arg(aux::type<Ts>{}, event, deps)...));
-        aux::on(apply(expr, deps.args, get_arg(aux::type<Ts>{}, event, deps)...), aux::get_by_type<TArgs>(&args)...);
-        return boost::mp11::mp_list<expr_t>{};
-      }(deps.args);
+  auto operator()(const TEvent & event, TSM &, TDeps & deps, TSubs &) -> void {
+    if constexpr (requires { deps.args; }) {
+      return [&]<template <class...> class TList, class... Ts>(TList<Ts...>) {
+        return [&]<class... TArgs>(aux::tuple<TArgs...>& args) {
+          aux::on(apply(expr, deps.args, get_arg(aux::type<Ts>{}, event, deps)...), aux::get_by_type<TArgs>(&args)...);
+        }(deps.args);
+      }
+      (args_t<TExpr, TEvent>{});
+    } else {
+      return []<template <class...> class TList, class... Ts>(TList<Ts...>) {
+        return boost::mp11::mp_list<decltype(expr(std::declval<Ts>()...))>{};
+      }(args_t<TExpr, TEvent>{});
     }
-    (args_t<TExpr, TEvent>{});
   }
 
  private:
