@@ -5,6 +5,7 @@
 // (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
 //
+template<class...> struct q;
 #pragma once
 #include <utility>
 #include <tuple>
@@ -2055,7 +2056,13 @@ struct transition<front::event<E>, G, A> {
   A a;
   template <class TEvent, class SM, class TDeps, class TSubs, class... Ts>
   bool execute(const TEvent &event, SM &sm, TDeps &deps, TSubs &subs, typename SM::state_t &, Ts &&...) {
-    if (call<TEvent, args_t<G, TEvent>, typename SM::logger_t>::execute(g, event, sm, deps, subs)) {
+    using g_t = decltype(call<TEvent, args_t<G, TEvent>, typename SM::logger_t>::execute(g, event, sm, deps, subs));
+    if constexpr(requires{ g_t::value; }) {
+      if constexpr(g_t::value) {
+        call<TEvent, args_t<A, TEvent>, typename SM::logger_t>::execute(a, event, sm, deps, subs);
+        return true;
+      }
+    } else if (call<TEvent, args_t<G, TEvent>, typename SM::logger_t>::execute(g, event, sm, deps, subs)) {
       call<TEvent, args_t<A, TEvent>, typename SM::logger_t>::execute(a, event, sm, deps, subs);
       return true;
     }
@@ -2255,7 +2262,18 @@ struct transition<state<S1>, state<S2>, front::event<E>, G, A> {
   transition(const G &g, const A &a) : g(g), a(a) {}
   template <class TEvent, class SM, class TDeps, class TSubs>
   bool execute(const TEvent &event, SM &sm, TDeps &deps, TSubs &subs, typename SM::state_t &current_state, aux::true_type) {
-    if (call<TEvent, args_t<G, TEvent>, typename SM::logger_t>::execute(g, event, sm, deps, subs)) {
+    using g_t = decltype(call<TEvent, args_t<G, TEvent>, typename SM::logger_t>::execute(g, event, sm, deps, subs));
+    if constexpr(requires{ g_t::value; }) {
+      if constexpr(g_t::value) {
+        sm.process_internal_event(back::on_exit<back::_, TEvent>{event}, deps, subs, current_state);
+        update_current_state(sm, deps, subs, current_state,
+                             aux::get_id<typename SM::state_t, dst_state>((typename SM::states_ids_t *)0), state<src_state>{},
+                             state<dst_state>{});
+        call<TEvent, args_t<A, TEvent>, typename SM::logger_t>::execute(a, event, sm, deps, subs);
+        sm.process_internal_event(back::on_entry<back::_, TEvent>{event}, deps, subs, current_state);
+        return true;
+      }
+    } else if (call<TEvent, args_t<G, TEvent>, typename SM::logger_t>::execute(g, event, sm, deps, subs)) {
       sm.process_internal_event(back::on_exit<back::_, TEvent>{event}, deps, subs, current_state);
       update_current_state(sm, deps, subs, current_state,
                            aux::get_id<typename SM::state_t, dst_state>((typename SM::states_ids_t *)0), state<src_state>{},
@@ -2268,7 +2286,16 @@ struct transition<state<S1>, state<S2>, front::event<E>, G, A> {
   }
   template <class TEvent, class SM, class TDeps, class TSubs>
   bool execute(const TEvent &event, SM &sm, TDeps &deps, TSubs &subs, typename SM::state_t &current_state, aux::false_type) {
-    if (call<TEvent, args_t<G, TEvent>, typename SM::logger_t>::execute(g, event, sm, deps, subs)) {
+    using g_t = decltype(call<TEvent, args_t<G, TEvent>, typename SM::logger_t>::execute(g, event, sm, deps, subs));
+    if constexpr(requires{ g_t::value; }) {
+      if constexpr(g_t::value) {
+        update_current_state(sm, deps, subs, current_state,
+                             aux::get_id<typename SM::state_t, dst_state>((typename SM::states_ids_t *)0), state<src_state>{},
+                             state<dst_state>{});
+        call<TEvent, args_t<A, TEvent>, typename SM::logger_t>::execute(a, event, sm, deps, subs);
+        return true;
+      }
+    } else if (call<TEvent, args_t<G, TEvent>, typename SM::logger_t>::execute(g, event, sm, deps, subs)) {
       update_current_state(sm, deps, subs, current_state,
                            aux::get_id<typename SM::state_t, dst_state>((typename SM::states_ids_t *)0), state<src_state>{},
                            state<dst_state>{});
@@ -2293,7 +2320,13 @@ struct transition<state<internal>, state<S2>, front::event<E>, G, A> {
   transition(const G &g, const A &a) : g(g), a(a) {}
   template <class TEvent, class SM, class TDeps, class TSubs, class... Ts>
   bool execute(const TEvent &event, SM &sm, TDeps &deps, TSubs &subs, typename SM::state_t &, Ts &&...) {
-    if (call<TEvent, args_t<G, TEvent>, typename SM::logger_t>::execute(g, event, sm, deps, subs)) {
+    using g_t = decltype(call<TEvent, args_t<G, TEvent>, typename SM::logger_t>::execute(g, event, sm, deps, subs));
+    if constexpr(requires{ g_t::value; }) {
+      if constexpr(g_t::value) {
+        call<TEvent, args_t<A, TEvent>, typename SM::logger_t>::execute(a, event, sm, deps, subs);
+        return true;
+      }
+    } else if (call<TEvent, args_t<G, TEvent>, typename SM::logger_t>::execute(g, event, sm, deps, subs)) {
       call<TEvent, args_t<A, TEvent>, typename SM::logger_t>::execute(a, event, sm, deps, subs);
       return true;
     }
@@ -2364,7 +2397,17 @@ struct transition<state<S1>, state<S2>, front::event<E>, G, none> {
   transition(const G &g, const none &) : g(g) {}
   template <class TEvent, class SM, class TDeps, class TSubs>
   bool execute(const TEvent &event, SM &sm, TDeps &deps, TSubs &subs, typename SM::state_t &current_state, aux::true_type) {
-    if (call<TEvent, args_t<G, TEvent>, typename SM::logger_t>::execute(g, event, sm, deps, subs)) {
+    using g_t = decltype(call<TEvent, args_t<G, TEvent>, typename SM::logger_t>::execute(g, event, sm, deps, subs));
+    if constexpr(requires{ g_t::value; }) {
+      if constexpr(g_t::value) {
+        sm.process_internal_event(back::on_exit<back::_, TEvent>{event}, deps, subs, current_state);
+        update_current_state(sm, deps, subs, current_state,
+                             aux::get_id<typename SM::state_t, dst_state>((typename SM::states_ids_t *)0), state<src_state>{},
+                             state<dst_state>{});
+        sm.process_internal_event(back::on_entry<back::_, TEvent>{event}, deps, subs, current_state);
+        return true;
+      }
+    } else if (call<TEvent, args_t<G, TEvent>, typename SM::logger_t>::execute(g, event, sm, deps, subs)) {
       sm.process_internal_event(back::on_exit<back::_, TEvent>{event}, deps, subs, current_state);
       update_current_state(sm, deps, subs, current_state,
                            aux::get_id<typename SM::state_t, dst_state>((typename SM::states_ids_t *)0), state<src_state>{},
@@ -2376,7 +2419,15 @@ struct transition<state<S1>, state<S2>, front::event<E>, G, none> {
   }
   template <class TEvent, class SM, class TDeps, class TSubs>
   bool execute(const TEvent &event, SM &sm, TDeps &deps, TSubs &subs, typename SM::state_t &current_state, aux::false_type) {
-    if (call<TEvent, args_t<G, TEvent>, typename SM::logger_t>::execute(g, event, sm, deps, subs)) {
+    using g_t = decltype(call<TEvent, args_t<G, TEvent>, typename SM::logger_t>::execute(g, event, sm, deps, subs));
+    if constexpr(requires{ g_t::value; }) {
+      if constexpr(g_t::value) {
+        update_current_state(sm, deps, subs, current_state,
+                             aux::get_id<typename SM::state_t, dst_state>((typename SM::states_ids_t *)0), state<src_state>{},
+                             state<dst_state>{});
+        return true;
+      }
+    } else if (call<TEvent, args_t<G, TEvent>, typename SM::logger_t>::execute(g, event, sm, deps, subs)) {
       update_current_state(sm, deps, subs, current_state,
                            aux::get_id<typename SM::state_t, dst_state>((typename SM::states_ids_t *)0), state<src_state>{},
                            state<dst_state>{});
