@@ -1730,7 +1730,11 @@ class not_ : operator_base {
   constexpr explicit not_(T t) : g(t) {}
   template <class TEvent, class TSM, class TDeps, class TSubs>
   constexpr auto operator()(const TEvent &event, TSM &sm, TDeps &deps, TSubs &subs) {
-    return !call<TEvent, args_t<T, TEvent>, typename TSM::logger_t>::execute(g, event, sm, deps, subs);
+    if constexpr (requires{ T::value; }) {
+      return !T::value;
+    } else {
+      return !call<TEvent, args_t<T, TEvent>, typename TSM::logger_t>::execute(g, event, sm, deps, subs);
+    }
   }
 
  private:
