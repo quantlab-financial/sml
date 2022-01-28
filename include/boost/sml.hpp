@@ -1553,15 +1553,15 @@ decltype(auto) get_arg(const aux::type<T> &, const back::exception<TEvent> &even
   return event.exception_;
 }
 template <class T, class... Ts>
-static auto apply(T object, aux::pool<Ts...> &args) {
+static auto apply(T object, aux::pool<Ts...> &args) -> decltype(object(aux::get<Ts>(args)...)) {
   return object(aux::get<Ts>(args)...);
 }
 template <class T, class TEvent, class... Ts>
-static auto apply(T object, const TEvent &event, aux::tuple<Ts...> &args) {
+static auto apply(T object, const TEvent &event, aux::tuple<Ts...> &args) -> decltype(object(event, aux::get_by_type<Ts>(&args)...)) {
   return object(event, aux::get_by_type<Ts>(&args)...);
 }
 template <class T, class TEvent, class TSM, class TDeps, class TSubs>
-static auto apply(T object, const TEvent &event, TSM &sm, TDeps &deps, TSubs &subs) {
+static auto apply(T object, const TEvent &event, TSM &sm, TDeps &deps, TSubs &subs) -> decltype(object(event, sm, deps, subs)) {
   return object(event, sm, deps, subs);
 }
 template <auto>
@@ -1576,7 +1576,7 @@ static auto apply_impl(priority<X>, T object, aux::tuple<TArgs...> &, Ts &&... t
   return object(std::forward<Ts>(ts)...);
 }
 template <class T, class... TArgs, class... Ts>
-static auto apply(T object, aux::tuple<TArgs...> &args, Ts &&... ts) {
+static auto apply(T object, aux::tuple<TArgs...> &args, Ts &&... ts) -> decltype(apply_impl(priority<1>{}, object, args, ts...)) {
   return apply_impl(priority<1>{}, object, args, ts...);
 }
 template <class, class, class>
@@ -1810,12 +1810,17 @@ struct emit : action_base, expr_base {
   template <class TEvent, class TSM, class TDeps, class TSubs>
   auto operator()(const TEvent & event, TSM &, TDeps & deps, TSubs &) -> void {
     if constexpr (requires { deps.args; }) {
-      return [&]<template <class...> class TList, class... Ts>(TList<Ts...>) {
-        return [&]<class... TArgs>(aux::tuple<TArgs...>& args) {
-          aux::on(apply(expr, deps.args, get_arg(aux::type<Ts>{}, event, deps)...), aux::get_by_type<TArgs>(&args)...);
-        }(deps.args);
+      [&]<template <class...> class TList, class... Ts, class... TArgs>(const TList<Ts...>&, aux::tuple<TArgs...>& args) {
+        const auto& e = apply(expr, deps.args, get_arg(aux::type<Ts>{}, event, deps)...);
+        if constexpr (requires { std::cbegin(e); std::cend(e); }) {
+          for (const auto& event : e) {
+            aux::on(event, aux::get_by_type<TArgs>(&args)...);
+          }
+        } else {
+          aux::on(e, aux::get_by_type<TArgs>(&args)...);
+        }
       }
-      (args_t<TExpr, TEvent>{});
+      (args_t<TExpr, TEvent>{}, deps.args);
     } else {
       return []<template <class...> class TList, class... Ts>(TList<Ts...>) {
         return boost::mp11::mp_list<decltype(expr(std::declval<Ts>()...))>{};
