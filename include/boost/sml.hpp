@@ -5,9 +5,10 @@
 // (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
 //
-template<class...> struct q;
 #pragma once
 #include <utility>
+#include <vector>
+#include <variant>
 #include <tuple>
 #if (__cplusplus < 201305L && _MSC_VER < 1900)
 #error "[Boost].SML requires C++14 support (Clang-3.4+, GCC-5.1+, MSVC-2015+)"
@@ -1556,13 +1557,13 @@ template <class T, class... Ts>
 static auto apply(T object, aux::pool<Ts...> &args) -> decltype(object(aux::get<Ts>(args)...)) {
   return object(aux::get<Ts>(args)...);
 }
-template <class T, class TEvent, class... Ts>
-static auto apply(T object, const TEvent &event, aux::tuple<Ts...> &args) -> decltype(object(event, aux::get_by_type<Ts>(&args)...)) {
-  return object(event, aux::get_by_type<Ts>(&args)...);
-}
 template <class T, class TEvent, class TSM, class TDeps, class TSubs>
 static auto apply(T object, const TEvent &event, TSM &sm, TDeps &deps, TSubs &subs) -> decltype(object(event, sm, deps, subs)) {
   return object(event, sm, deps, subs);
+}
+template <class T, class TEvent, class... Ts>
+static auto apply(T object, const TEvent &event, aux::tuple<Ts...> &args) -> decltype(object(event, aux::get_by_type<Ts>(&args)...)) {
+  return object(event, aux::get_by_type<Ts>(&args)...);
 }
 template <auto>
 struct priority {};
@@ -1604,7 +1605,7 @@ struct call<TEvent, aux::type_list<>, TLogger> {
   template <class TSM, class T, class TDeps>
   static auto execute_impl(const aux::type<void> &, const void *sm, T object, const TEvent &event, TDeps &deps) {
     back::log_call<TSM>(aux::type<TLogger>{}, sm, deps, object, event);
-    apply(object, deps.args);
+    return apply(object, deps.args);
   }
 };
 
@@ -1631,7 +1632,7 @@ struct call<TEvent, aux::type_list<TEvent>, TLogger> {
   template <class TSM, class T, class TDeps>
   static auto execute_impl(const aux::type<void> &, const void *sm, T object, const TEvent &event, TDeps &deps) {
     back::log_call<TSM>(aux::type<TLogger>{}, sm, deps, object, event);
-    apply(object, event, deps.args);
+    return apply(object, event, deps.args);
   }
 };
 template <class TEvent>
@@ -1651,7 +1652,7 @@ struct call<TEvent, aux::type_list<action_base>, TLogger> {
 template <class TEvent, class... Ts>
 struct call<TEvent, aux::type_list<Ts...>, back::no_policy> {
   template <class T, class TSM, class TDeps, class TSubs>
-  static auto execute(T object, const TEvent &event, TSM &, TDeps &deps, TSubs &) {
+  static auto execute(T object, const TEvent &event, TSM &, TDeps &deps, TSubs &) -> decltype(apply(object, deps.args, get_arg(aux::type<Ts>{}, event, deps)...)) {
     return apply(object, deps.args, get_arg(aux::type<Ts>{}, event, deps)...);
   }
 };
@@ -1671,7 +1672,7 @@ struct call<TEvent, aux::type_list<Ts...>, TLogger> {
   template <class TSM, class T, class TDeps>
   static auto execute_impl(const aux::type<void> &, const void *sm, T object, const TEvent &event, TDeps &deps) {
     back::log_call<TSM>(aux::type<TLogger>{}, sm, deps, object, event);
-    apply(object, deps.args, get_arg(aux::type<Ts>{}, event, deps)...);
+    return apply(object, deps.args, get_arg(aux::type<Ts>{}, event, deps)...);
   }
 };
 template <class... Ts>
@@ -1801,30 +1802,53 @@ struct defer : action_base {
     sm.defer_.push(event);
   }
 };
+
+template<class T>
+struct event_traits {
+  using type = boost::mp11::mp_list<T>;
+};
+
+template<class... Ts>
+struct event_traits<std::variant<Ts...>> {
+  using type = boost::mp11::mp_list<Ts...>;
+};
+
+template<class T>
+struct event_traits<std::vector<T>> {
+  using type = typename event_traits<T>::type;
+};
+
 template<class TExpr>
 struct emit : action_base, expr_base {
   using expr_t = TExpr;
 
   constexpr explicit(true) emit(TExpr expr) : expr{expr} {}
 
+  template <class TEvent>
+  auto operator()(const TEvent & event, ...) {
+    return []<template <class...> class TList, class... Ts>(TList<Ts...>) {
+      return typename event_traits<std::remove_cvref_t<decltype(expr(std::declval<Ts>()...))>>::type{};
+    }(args_t<TExpr, TEvent>{});
+  }
+
   template <class TEvent, class TSM, class TDeps, class TSubs>
-  auto operator()(const TEvent & event, TSM &, TDeps & deps, TSubs &) -> void {
+  auto operator()(const TEvent & event, const TSM &, const TDeps & deps, const TSubs &) -> void {
     if constexpr (requires { deps.args; }) {
       [&]<template <class...> class TList, class... Ts, class... TArgs>(const TList<Ts...>&, aux::tuple<TArgs...>& args) {
         const auto& e = apply(expr, deps.args, get_arg(aux::type<Ts>{}, event, deps)...);
         if constexpr (requires { std::cbegin(e); std::cend(e); }) {
           for (const auto& event : e) {
-            aux::on(event, aux::get_by_type<TArgs>(&args)...);
+            if constexpr (requires { event.index(); }) {
+                std::visit([ & ](const auto &e) { aux::on(e, aux::get_by_type<TArgs>(&args)...); }, event);
+            } else {
+              aux::on(event, aux::get_by_type<TArgs>(&args)...);
+            }
           }
         } else {
           aux::on(e, aux::get_by_type<TArgs>(&args)...);
         }
       }
       (args_t<TExpr, TEvent>{}, deps.args);
-    } else {
-      return []<template <class...> class TList, class... Ts>(TList<Ts...>) {
-        return boost::mp11::mp_list<decltype(expr(std::declval<Ts>()...))>{};
-      }(args_t<TExpr, TEvent>{});
     }
   }
 
