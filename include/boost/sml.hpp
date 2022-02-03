@@ -2111,6 +2111,11 @@ struct transition<state<S2>, G, A> : transition<state<internal>, state<S2>, fron
   auto operator=(const T &) const {
     return transition<T, state<S2>, front::event<back::anonymous>, G, A>{g, a};
   }
+  template <class TEvent, class TSM, class TDeps, class TSubs>
+  auto operator()(const TEvent & event, const TSM & sm, const TDeps & deps, const TSubs & subs) -> void {
+    typename TSM::state_t s{};
+    this->execute(event, sm, deps, subs, s);
+  }
 };
 template <class S1, class S2>
 struct transition<state<S1>, state<S2>> : transition<state<S1>, state<S2>, front::event<back::anonymous>, always, none> {
@@ -2566,6 +2571,7 @@ __BOOST_SML_UNUSED static front::history_state H;
 __BOOST_SML_UNUSED static front::actions::defer defer;
 namespace front {
 __BOOST_SML_UNUSED static auto emit = [](auto expr) { return front::actions::emit{expr}; };
+__BOOST_SML_UNUSED static auto eval = state<class SML_EVAL>{};
 __BOOST_SML_UNUSED static auto fwd = []<class TEvent>(const TEvent& event, auto&... args) { aux::on(event, args...); return boost::mp11::mp_list<TEvent>{}; };
 }
 __BOOST_SML_UNUSED static front::actions::process process;
