@@ -1841,7 +1841,7 @@ struct emit : action_base, expr_base {
     if constexpr (requires { deps.args; }) {
       [&]<template <class...> class TList, class... Ts, class... TArgs>(const TList<Ts...>&, aux::tuple<TArgs...>& args) {
         const auto& e = apply(expr, deps.args, get_arg(aux::type<Ts>{}, event, deps)...);
-        if constexpr (requires { std::cbegin(e); std::cend(e); }) {
+        if constexpr (requires { std::cbegin(e); std::cend(e); typename decltype(e)::value_type; }) {
           for (const auto& event : e) {
             if constexpr(aux::is_tuple<decltype(event)>) {
               std:apply([&](const auto&... events) { (aux::on(events, aux::get_by_type<TArgs>(&args)...), ...); }, event);
@@ -1851,6 +1851,8 @@ struct emit : action_base, expr_base {
               aux::on(event, aux::get_by_type<TArgs>(&args)...);
             }
           }
+        } else if constexpr (requires { e(); }) {
+          aux::on(e(), aux::get_by_type<TArgs>(&args)...);
         } else {
           aux::on(e, aux::get_by_type<TArgs>(&args)...);
         }
