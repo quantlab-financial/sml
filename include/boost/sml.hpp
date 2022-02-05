@@ -1813,6 +1813,11 @@ struct event_traits<std::variant<Ts...>> {
   using type = boost::mp11::mp_list<Ts...>;
 };
 
+template<class... Ts>
+struct event_traits<std::tuple<Ts...>> {
+  using type = boost::mp11::mp_list<Ts...>;
+};
+
 template<class T>
 struct event_traits<std::vector<T>> {
   using type = typename event_traits<T>::type;
@@ -1838,8 +1843,10 @@ struct emit : action_base, expr_base {
         const auto& e = apply(expr, deps.args, get_arg(aux::type<Ts>{}, event, deps)...);
         if constexpr (requires { std::cbegin(e); std::cend(e); }) {
           for (const auto& event : e) {
-            if constexpr (requires { event.index(); }) {
-                std::visit([ & ](const auto &e) { aux::on(e, aux::get_by_type<TArgs>(&args)...); }, event);
+            if constexpr(aux::is_tuple<decltype(event)>) {
+              std:apply([&](const auto&... events) { (aux::on(events, aux::get_by_type<TArgs>(&args)...), ...); }, event);
+            } else if constexpr (requires { event.index(); }) {
+              std::visit([ & ](const auto &e) { aux::on(e, aux::get_by_type<TArgs>(&args)...); }, event);
             } else {
               aux::on(event, aux::get_by_type<TArgs>(&args)...);
             }
