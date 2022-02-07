@@ -10,6 +10,8 @@
 #include <vector>
 #include <variant>
 #include <tuple>
+#include <boost/range/adaptor/transformed.hpp>
+
 #if (__cplusplus < 201305L && _MSC_VER < 1900)
 #error "[Boost].SML requires C++14 support (Clang-3.4+, GCC-5.1+, MSVC-2015+)"
 #else
@@ -1832,6 +1834,11 @@ struct event_traits<std::tuple<Ts...>> {
 template<class T>
 struct event_traits<std::vector<T>> {
   using type = typename event_traits<T>::type;
+};
+
+template<class F, class T>
+struct event_traits<boost::transformed_range<F, T>> {
+  using type = typename event_traits<std::remove_cvref_t<T>>::type;
 };
 
 template<class TExpr>
