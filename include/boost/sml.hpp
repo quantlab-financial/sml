@@ -1408,7 +1408,7 @@ class sm {
   template <class TEvent, class... Ts, __BOOST_SML_REQUIRES(aux::is_base_of<TEvent, events_ids>::value)>
   void process_event(const TEvent &event, Ts &... ts) {
     aux::tuple<Ts &...> args{ts...};
-    struct deps {
+    struct _deps {
       deps_t& deps;
       aux::tuple<Ts &...>& args;
     } ds{deps_, args};
@@ -1417,7 +1417,7 @@ class sm {
   template <class TEvent, class... Ts, __BOOST_SML_REQUIRES(!aux::is_base_of<TEvent, events_ids>::value)>
   void process_event(const TEvent &event, Ts &... ts) {
     aux::tuple<Ts &...> args{ts...};
-    struct deps {
+    struct _deps {
       deps_t& deps;
       aux::tuple<Ts &...>& args;
     } ds{deps_, args};
@@ -1527,7 +1527,11 @@ decltype(auto) get_arg(const aux::type<T> &, const TEvent &, TDeps &deps) {
 }
 template <class T, class TEvent, class TDeps>
 decltype(auto) get_arg(const aux::type<const T&> &, const TEvent &, TDeps &deps) {
-  return aux::get<T&>(deps.deps);
+  if constexpr(requires { static_cast<aux::pool_type<T&> &>(deps.deps).value; }) {
+    return aux::get<T&>(deps.deps);
+  } else {
+    return aux::get<const T&>(deps.deps);
+  }
 }
 template <class TEvent, class TDeps>
 decltype(auto) get_arg(const aux::type<TEvent> &, const TEvent &event, TDeps &) {
@@ -1553,32 +1557,39 @@ template <class T, class TEvent, class TDeps>
 decltype(auto) get_arg(const aux::type<T> &, const back::exception<TEvent> &event, TDeps &) {
   return event.exception_;
 }
-template <class T, class... Ts>
-static auto apply(T object, aux::pool<Ts...> &args) -> decltype(object(aux::get<Ts>(args)...)) {
+template <class T, class... Ts, class TDeps>
+static auto apply(T object, aux::pool<Ts...> &args, const TDeps&) -> decltype(object(aux::get<Ts>(args)...)) {
   return object(aux::get<Ts>(args)...);
 }
 template <class T, class TEvent, class TSM, class TDeps, class TSubs>
 static auto apply(T object, const TEvent &event, TSM &sm, TDeps &deps, TSubs &subs) -> decltype(object(event, sm, deps, subs)) {
   return object(event, sm, deps, subs);
 }
-template <class T, class TEvent, class... Ts>
-static auto apply(T object, const TEvent &event, aux::tuple<Ts...> &args) -> decltype(object(event, aux::get_by_type<Ts>(&args)...)) {
+template <class T, class TEvent, class... Ts, class TDeps>
+static auto apply(T object, const TEvent &event, aux::tuple<Ts...> &args, const TDeps&) -> decltype(object(event, aux::get_by_type<Ts>(&args)...)) {
   return object(event, aux::get_by_type<Ts>(&args)...);
 }
 template <auto>
 struct priority {};
-template <class T, class... TArgs, class... Ts>
-static auto apply_impl(priority<1>, T object, aux::tuple<TArgs...> &args, Ts &&... ts)
+template <class T, class... TArgs, class TDeps, class... Ts>
+static auto apply_impl(priority<1>, T object, aux::tuple<TArgs...> &args, const TDeps&, Ts &&... ts)
     -> decltype(object(std::forward<Ts>(ts)..., aux::get_by_type<TArgs>(&args)...)) {
   return object(std::forward<Ts>(ts)..., aux::get_by_type<TArgs>(&args)...);
 }
-template <auto X, class T, class... TArgs, class... Ts>
-static auto apply_impl(priority<X>, T object, aux::tuple<TArgs...> &, Ts &&... ts) -> decltype(object(std::forward<Ts>(ts)...)) {
-  return object(std::forward<Ts>(ts)...);
+template <auto X, class T, class... TArgs, class TDeps, class... Ts>
+static auto apply_impl(priority<X>, T object, aux::tuple<TArgs...> &, const TDeps& deps, Ts &&... ts) -> decltype(object(std::forward<Ts>(ts)...)) {
+  using type = decltype(object(std::forward<Ts>(ts)...));
+  if constexpr(std::is_void_v<type>) {
+    object(std::forward<Ts>(ts)...);
+  } else if constexpr(requires (type& t) { bool(t); } and std::is_base_of_v<aux::pool_type<const type&>, TDeps>) {
+    return const_cast<type&>(aux::get<const type&>(const_cast<TDeps&>(deps))) = object(std::forward<Ts>(ts)...);
+  } else {
+    return object(std::forward<Ts>(ts)...);
+  }
 }
-template <class T, class... TArgs, class... Ts>
-static auto apply(T object, aux::tuple<TArgs...> &args, Ts &&... ts) -> decltype(apply_impl(priority<1>{}, object, args, ts...)) {
-  return apply_impl(priority<1>{}, object, args, ts...);
+template <class T, class... TArgs, class TDeps, class... Ts>
+static auto apply(T object, aux::tuple<TArgs...> &args, const TDeps& deps, Ts &&... ts) -> decltype(apply_impl(priority<1>{}, object, args, deps, ts...)) {
+  return apply_impl(priority<1>{}, object, args, deps, ts...);
 }
 template <class, class, class>
 struct call;
@@ -1586,26 +1597,26 @@ template <class TEvent>
 struct call<TEvent, aux::type_list<>, back::no_policy> {
   template <class T, class TSM, class TDeps, class TSubs>
   static auto execute(T object, const TEvent &, TSM &, TDeps &deps, TSubs &) {
-    return apply(object, deps.args);
+    return apply(object, deps.args, deps.deps);
   }
 };
 template <class TEvent, class TLogger>
 struct call<TEvent, aux::type_list<>, TLogger> {
   template <class T, class TSM, class TDeps, class TSubs>
   static auto execute(T object, const TEvent &event, TSM &sm, TDeps &deps, TSubs &) {
-    using result_type = decltype(apply(object, deps.args));
+    using result_type = decltype(apply(object, deps.args, deps.deps));
     return execute_impl<typename TSM::sm_t>(aux::type<result_type>{}, &sm, object, event, deps);
   }
   template <class TSM, class T, class TDeps, class Q>
   static auto execute_impl(const aux::type<Q> &, const void *sm, T object, const TEvent &event, TDeps &deps) {
-    const auto result = apply(object, deps.args);
+    const auto result = apply(object, deps.args, deps.deps);
     back::log_call<TSM>(aux::type<TLogger>{}, sm, deps, object, event, result);
     return result;
   }
   template <class TSM, class T, class TDeps>
   static auto execute_impl(const aux::type<void> &, const void *sm, T object, const TEvent &event, TDeps &deps) {
     back::log_call<TSM>(aux::type<TLogger>{}, sm, deps, object, event);
-    return apply(object, deps.args);
+    return apply(object, deps.args, deps.deps);
   }
 };
 
@@ -1613,26 +1624,26 @@ template <class TEvent>
 struct call<TEvent, aux::type_list<TEvent>, back::no_policy> {
   template <class T, class TSM, class TDeps, class TSubs>
   static auto execute(T object, const TEvent &event, TSM &, TDeps &deps, TSubs &) {
-    return apply(object, event, deps.args);
+    return apply(object, event, deps.args, deps.deps);
   }
 };
 template <class TEvent, class TLogger>
 struct call<TEvent, aux::type_list<TEvent>, TLogger> {
   template <class T, class TSM, class TDeps, class TSubs>
   static auto execute(T object, const TEvent &event, TSM &sm, TDeps &deps, TSubs &) {
-    using result_type = decltype(apply(object, event, deps.args));
+    using result_type = decltype(apply(object, event, deps.args, deps.deps));
     return execute_impl<typename TSM::sm_t>(aux::type<result_type>{}, &sm, object, event, deps);
   }
   template <class TSM, class T, class TDeps, class Q>
   static auto execute_impl(const aux::type<Q> &, const void *sm, T object, const TEvent &event, TDeps &deps) {
-    const auto result = apply(object, event, deps.args);
+    const auto result = apply(object, event, deps.args, deps.deps);
     back::log_call<TSM>(aux::type<TLogger>{}, sm, deps, object, event, result);
     return result;
   }
   template <class TSM, class T, class TDeps>
   static auto execute_impl(const aux::type<void> &, const void *sm, T object, const TEvent &event, TDeps &deps) {
     back::log_call<TSM>(aux::type<TLogger>{}, sm, deps, object, event);
-    return apply(object, event, deps.args);
+    return apply(object, event, deps.args, deps.deps);
   }
 };
 template <class TEvent>
@@ -1652,27 +1663,27 @@ struct call<TEvent, aux::type_list<action_base>, TLogger> {
 template <class TEvent, class... Ts>
 struct call<TEvent, aux::type_list<Ts...>, back::no_policy> {
   template <class T, class TSM, class TDeps, class TSubs>
-  static auto execute(T object, const TEvent &event, TSM &, TDeps &deps, TSubs &) -> decltype(apply(object, deps.args, get_arg(aux::type<Ts>{}, event, deps)...)) {
-    return apply(object, deps.args, get_arg(aux::type<Ts>{}, event, deps)...);
+  static auto execute(T object, const TEvent &event, TSM &, TDeps &deps, TSubs &) -> decltype(apply(object, deps.args, deps.deps, get_arg(aux::type<Ts>{}, event, deps)...)) {
+    return apply(object, deps.args, deps.deps, get_arg(aux::type<Ts>{}, event, deps)...);
   }
 };
 template <class TEvent, class... Ts, class TLogger>
 struct call<TEvent, aux::type_list<Ts...>, TLogger> {
   template <class T, class TSM, class TDeps, class TSubs>
   static auto execute(T object, const TEvent &event, TSM &sm, TDeps &deps, TSubs &) {
-    using result_type = decltype(apply(object, deps.args, get_arg(aux::type<Ts>{}, event, deps)...));
+    using result_type = decltype(apply(object, deps.args, deps.deps, get_arg(aux::type<Ts>{}, event, deps)...));
     return execute_impl<typename TSM::sm_t>(aux::type<result_type>{}, &sm, object, event, deps);
   }
   template <class TSM, class T, class TDeps, class Q>
   static auto execute_impl(const aux::type<Q> &, const void *sm, T object, const TEvent &event, TDeps &deps) {
-    const auto result = apply(object, deps.args, get_arg(aux::type<Ts>{}, event, deps)...);
+    const auto result = apply(object, deps.args, deps.deps, get_arg(aux::type<Ts>{}, event, deps)...);
     back::log_call<TSM>(aux::type<TLogger>{}, sm, deps, object, event, result);
     return result;
   }
   template <class TSM, class T, class TDeps>
   static auto execute_impl(const aux::type<void> &, const void *sm, T object, const TEvent &event, TDeps &deps) {
     back::log_call<TSM>(aux::type<TLogger>{}, sm, deps, object, event);
-    return apply(object, deps.args, get_arg(aux::type<Ts>{}, event, deps)...);
+    return apply(object, deps.args, deps.deps, get_arg(aux::type<Ts>{}, event, deps)...);
   }
 };
 template <class... Ts>
@@ -1840,8 +1851,8 @@ struct emit : action_base, expr_base {
   auto operator()(const TEvent & event, const TSM &, const TDeps & deps, const TSubs &) -> void {
     if constexpr (requires { deps.args; }) {
       [&]<template <class...> class TList, class... Ts, class... TArgs>(const TList<Ts...>&, aux::tuple<TArgs...>& args) {
-        const auto& e = apply(expr, deps.args, get_arg(aux::type<Ts>{}, event, deps)...);
-        if constexpr (requires { std::cbegin(e); std::cend(e); typename decltype(e)::value_type; }) {
+        const auto& e = apply(expr, deps.args, deps.deps, get_arg(aux::type<Ts>{}, event, deps)...);
+        if constexpr (requires { std::cbegin(e); std::cend(e); }) {
           for (const auto& event : e) {
             if constexpr(aux::is_tuple<decltype(event)>) {
               std:apply([&](const auto&... events) { (aux::on(events, aux::get_by_type<TArgs>(&args)...), ...); }, event);
