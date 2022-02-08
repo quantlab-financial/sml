@@ -1850,7 +1850,7 @@ struct emit : action_base, expr_base {
   template <class TEvent>
   auto operator()(const TEvent & event, ...) {
     return []<template <class...> class TList, class... Ts>(TList<Ts...>) {
-      return typename event_traits<std::remove_cvref_t<decltype(expr(std::declval<Ts>()...))>>::type{};
+      return typename event_traits<std::remove_cvref_t<decltype(std::declval<TExpr>()(std::declval<Ts>()...))>>::type{};
     }(args_t<TExpr, TEvent>{});
   }
 
@@ -1879,6 +1879,7 @@ struct emit : action_base, expr_base {
     }
   }
 
+ private:
   TExpr expr{};
 };
 }  // namespace actions
