@@ -1879,7 +1879,6 @@ struct emit : action_base, expr_base {
     }
   }
 
- private:
   TExpr expr{};
 };
 }  // namespace actions
