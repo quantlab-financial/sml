@@ -703,7 +703,7 @@ struct sm_policy {
   using defer_queue_policy = decltype(get_policy<no_policy, defer_queue_policy__>((aux::inherit<TPolicies...> *)0));
   using logger_policy = decltype(get_policy<no_policy, logger_policy__>((aux::inherit<TPolicies...> *)0));
   using testing_policy = decltype(get_policy<no_policy, testing_policy__>((aux::inherit<TPolicies...> *)0));
-  using dispatch_policy = decltype(get_policy<struct branch_stm, dispatch_policy__>((aux::inherit<TPolicies...> *)0));
+  using dispatch_policy = decltype(get_policy<struct goto_stm, dispatch_policy__>((aux::inherit<TPolicies...> *)0));
   template <class T>
   using rebind = typename rebind_impl<T, TPolicies...>::type;
 };
@@ -1091,6 +1091,234 @@ struct fold_expr {
   }
 };
 
+struct goto_stm {
+  template <int N, class TMappings, class sm_impl, class State, class TEvent, class TDeps, class TSubs, class TState1, class TState2>
+  [[gnu::always_inline]] static bool dispatch(sm_impl &self, State &current_state, const TEvent &event, TDeps &deps, TSubs &subs,
+                       const aux::type_list<TState1, TState2> &) {
+    static constexpr const void* dispatch_table[] = { &&state1, &&state2 };
+    goto *dispatch_table[current_state];
+    state1: return back::get_state_mapping_t<TState1, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state2: return back::get_state_mapping_t<TState2, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+  }
+  template <int N, class TMappings, class sm_impl, class State, class TEvent, class TDeps, class TSubs, class TState1, class TState2, class TState3>
+  [[gnu::always_inline]] static bool dispatch(sm_impl &self, State &current_state, const TEvent &event, TDeps &deps, TSubs &subs,
+                       const aux::type_list<TState1, TState2, TState3> &) {
+    static constexpr const void* dispatch_table[] = { &&state1, &&state2, &&state3 };
+    goto *dispatch_table[current_state];
+    state1: return back::get_state_mapping_t<TState1, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state2: return back::get_state_mapping_t<TState2, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state3: return back::get_state_mapping_t<TState3, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+  }
+  template <int N, class TMappings, class sm_impl, class State, class TEvent, class TDeps, class TSubs, class TState1, class TState2, class TState3, class TState4>
+  [[gnu::always_inline]] static bool dispatch(sm_impl &self, State &current_state, const TEvent &event, TDeps &deps, TSubs &subs,
+                       const aux::type_list<TState1, TState2, TState3, TState4> &) {
+    static constexpr const void* dispatch_table[] = { &&state1, &&state2, &&state3, &&state4 };
+    goto *dispatch_table[current_state];
+    state1: return back::get_state_mapping_t<TState1, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state2: return back::get_state_mapping_t<TState2, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state3: return back::get_state_mapping_t<TState3, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state4: return back::get_state_mapping_t<TState4, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+  }
+  template <int N, class TMappings, class sm_impl, class State, class TEvent, class TDeps, class TSubs, class TState1, class TState2, class TState3, class TState4, class TState5>
+  [[gnu::always_inline]] static bool dispatch(sm_impl &self, State &current_state, const TEvent &event, TDeps &deps, TSubs &subs,
+                       const aux::type_list<TState1, TState2, TState3, TState4, TState5> &) {
+    static constexpr const void* dispatch_table[] = { &&state1, &&state2, &&state3, &&state4, &&state5 };
+    goto *dispatch_table[current_state];
+    state1: return back::get_state_mapping_t<TState1, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state2: return back::get_state_mapping_t<TState2, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state3: return back::get_state_mapping_t<TState3, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state4: return back::get_state_mapping_t<TState4, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state5: return back::get_state_mapping_t<TState5, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+  }
+  template <int N, class TMappings, class sm_impl, class State, class TEvent, class TDeps, class TSubs, class TState1, class TState2, class TState3, class TState4, class TState5, class TState6>
+  [[gnu::always_inline]] static bool dispatch(sm_impl &self, State &current_state, const TEvent &event, TDeps &deps, TSubs &subs,
+                       const aux::type_list<TState1, TState2, TState3, TState4, TState5, TState6> &) {
+    static constexpr const void* dispatch_table[] = { &&state1, &&state2, &&state3, &&state4, &&state5, &&state6 };
+    goto *dispatch_table[current_state];
+    state1: return back::get_state_mapping_t<TState1, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state2: return back::get_state_mapping_t<TState2, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state3: return back::get_state_mapping_t<TState3, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state4: return back::get_state_mapping_t<TState4, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state5: return back::get_state_mapping_t<TState5, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state6: return back::get_state_mapping_t<TState6, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+  }
+  template <int N, class TMappings, class sm_impl, class State, class TEvent, class TDeps, class TSubs, class TState1, class TState2, class TState3, class TState4, class TState5, class TState6, class TState7>
+  [[gnu::always_inline]] static bool dispatch(sm_impl &self, State &current_state, const TEvent &event, TDeps &deps, TSubs &subs,
+                       const aux::type_list<TState1, TState2, TState3, TState4, TState5, TState6, TState7> &) {
+    static constexpr const void* dispatch_table[] = { &&state1, &&state2, &&state3, &&state4, &&state5, &&state6, &&state7 };
+    goto *dispatch_table[current_state];
+    state1: return back::get_state_mapping_t<TState1, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state2: return back::get_state_mapping_t<TState2, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state3: return back::get_state_mapping_t<TState3, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state4: return back::get_state_mapping_t<TState4, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state5: return back::get_state_mapping_t<TState5, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state6: return back::get_state_mapping_t<TState6, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state7: return back::get_state_mapping_t<TState7, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+  }
+  template <int N, class TMappings, class sm_impl, class State, class TEvent, class TDeps, class TSubs, class TState1, class TState2, class TState3, class TState4, class TState5, class TState6, class TState7, class TState8>
+  [[gnu::always_inline]] static bool dispatch(sm_impl &self, State &current_state, const TEvent &event, TDeps &deps, TSubs &subs,
+                       const aux::type_list<TState1, TState2, TState3, TState4, TState5, TState6, TState7, TState8> &) {
+    static constexpr const void* dispatch_table[] = { &&state1, &&state2, &&state3, &&state4, &&state5, &&state6, &&state7, &&state8 };
+    goto *dispatch_table[current_state];
+    state1: return back::get_state_mapping_t<TState1, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state2: return back::get_state_mapping_t<TState2, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state3: return back::get_state_mapping_t<TState3, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state4: return back::get_state_mapping_t<TState4, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state5: return back::get_state_mapping_t<TState5, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state6: return back::get_state_mapping_t<TState6, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state7: return back::get_state_mapping_t<TState7, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state8: return back::get_state_mapping_t<TState8, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+  }
+  template <int N, class TMappings, class sm_impl, class State, class TEvent, class TDeps, class TSubs, class TState1, class TState2, class TState3, class TState4, class TState5, class TState6, class TState7, class TState8, class TState9>
+  [[gnu::always_inline]] static bool dispatch(sm_impl &self, State &current_state, const TEvent &event, TDeps &deps, TSubs &subs,
+                       const aux::type_list<TState1, TState2, TState3, TState4, TState5, TState6, TState7, TState8, TState9> &) {
+    static constexpr const void* dispatch_table[] = { &&state1, &&state2, &&state3, &&state4, &&state5, &&state6, &&state7, &&state8, &&state9};
+    goto *dispatch_table[current_state];
+    state1: return back::get_state_mapping_t<TState1, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state2: return back::get_state_mapping_t<TState2, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state3: return back::get_state_mapping_t<TState3, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state4: return back::get_state_mapping_t<TState4, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state5: return back::get_state_mapping_t<TState5, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state6: return back::get_state_mapping_t<TState6, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state7: return back::get_state_mapping_t<TState7, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state8: return back::get_state_mapping_t<TState8, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state9: return back::get_state_mapping_t<TState9, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+  }
+  template <int N, class TMappings, class sm_impl, class State, class TEvent, class TDeps, class TSubs, class TState1, class TState2, class TState3, class TState4, class TState5, class TState6, class TState7, class TState8, class TState9, class TState10>
+  [[gnu::always_inline]] static bool dispatch(sm_impl &self, State &current_state, const TEvent &event, TDeps &deps, TSubs &subs,
+                       const aux::type_list<TState1, TState2, TState3, TState4, TState5, TState6, TState7, TState8, TState9, TState10> &) {
+    static constexpr const void* dispatch_table[] = { &&state1, &&state2, &&state3, &&state4, &&state5, &&state6, &&state7, &&state8, &&state9, &&state10 };
+    goto *dispatch_table[current_state];
+    state1: return back::get_state_mapping_t<TState1, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state2: return back::get_state_mapping_t<TState2, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state3: return back::get_state_mapping_t<TState3, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state4: return back::get_state_mapping_t<TState4, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state5: return back::get_state_mapping_t<TState5, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state6: return back::get_state_mapping_t<TState6, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state7: return back::get_state_mapping_t<TState7, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state8: return back::get_state_mapping_t<TState8, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state9: return back::get_state_mapping_t<TState9, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state10: return back::get_state_mapping_t<TState10, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+  }
+  template <int N, class TMappings, class sm_impl, class State, class TEvent, class TDeps, class TSubs, class TState1, class TState2, class TState3, class TState4, class TState5, class TState6, class TState7, class TState8, class TState9, class TState10, class TState11>
+  [[gnu::always_inline]] static bool dispatch(sm_impl &self, State &current_state, const TEvent &event, TDeps &deps, TSubs &subs,
+                       const aux::type_list<TState1, TState2, TState3, TState4, TState5, TState6, TState7, TState8, TState9, TState10, TState11> &) {
+    static constexpr const void* dispatch_table[] = { &&state1, &&state2, &&state3, &&state4, &&state5, &&state6, &&state7, &&state8, &&state9, &&state10, &&state11 };
+    goto *dispatch_table[current_state];
+    state1: return back::get_state_mapping_t<TState1, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state2: return back::get_state_mapping_t<TState2, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state3: return back::get_state_mapping_t<TState3, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state4: return back::get_state_mapping_t<TState4, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state5: return back::get_state_mapping_t<TState5, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state6: return back::get_state_mapping_t<TState6, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state7: return back::get_state_mapping_t<TState7, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state8: return back::get_state_mapping_t<TState8, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state9: return back::get_state_mapping_t<TState9, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state10: return back::get_state_mapping_t<TState10, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state11: return back::get_state_mapping_t<TState11, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+  }
+  template <int N, class TMappings, class sm_impl, class State, class TEvent, class TDeps, class TSubs, class TState1, class TState2, class TState3, class TState4, class TState5, class TState6, class TState7, class TState8, class TState9, class TState10, class TState11, class TState12>
+  [[gnu::always_inline]] static bool dispatch(sm_impl &self, State &current_state, const TEvent &event, TDeps &deps, TSubs &subs,
+                       const aux::type_list<TState1, TState2, TState3, TState4, TState5, TState6, TState7, TState8, TState9, TState10, TState11, TState12> &) {
+    static constexpr const void* dispatch_table[] = { &&state1, &&state2, &&state3, &&state4, &&state5, &&state6, &&state7, &&state8, &&state9, &&state10, &&state11, &&state12 };
+    goto *dispatch_table[current_state];
+    state1: return back::get_state_mapping_t<TState1, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state2: return back::get_state_mapping_t<TState2, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state3: return back::get_state_mapping_t<TState3, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state4: return back::get_state_mapping_t<TState4, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state5: return back::get_state_mapping_t<TState5, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state6: return back::get_state_mapping_t<TState6, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state7: return back::get_state_mapping_t<TState7, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state8: return back::get_state_mapping_t<TState8, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state9: return back::get_state_mapping_t<TState9, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state10: return back::get_state_mapping_t<TState10, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state11: return back::get_state_mapping_t<TState11, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state12: return back::get_state_mapping_t<TState12, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+  }
+  template <int N, class TMappings, class sm_impl, class State, class TEvent, class TDeps, class TSubs, class TState1, class TState2, class TState3, class TState4, class TState5, class TState6, class TState7, class TState8, class TState9, class TState10, class TState11, class TState12, class TState13>
+  [[gnu::always_inline]] static bool dispatch(sm_impl &self, State &current_state, const TEvent &event, TDeps &deps, TSubs &subs,
+                       const aux::type_list<TState1, TState2, TState3, TState4, TState5, TState6, TState7, TState8, TState9, TState10, TState11, TState12, TState13> &) {
+    static constexpr const void* dispatch_table[] = { &&state1, &&state2, &&state3, &&state4, &&state5, &&state6, &&state7, &&state8, &&state9, &&state10, &&state11, &&state12, &&state13 };
+    goto *dispatch_table[current_state];
+    state1: return back::get_state_mapping_t<TState1, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state2: return back::get_state_mapping_t<TState2, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state3: return back::get_state_mapping_t<TState3, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state4: return back::get_state_mapping_t<TState4, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state5: return back::get_state_mapping_t<TState5, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state6: return back::get_state_mapping_t<TState6, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state7: return back::get_state_mapping_t<TState7, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state8: return back::get_state_mapping_t<TState8, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state9: return back::get_state_mapping_t<TState9, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state10: return back::get_state_mapping_t<TState10, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state11: return back::get_state_mapping_t<TState11, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state12: return back::get_state_mapping_t<TState12, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state13: return back::get_state_mapping_t<TState13, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+  }
+  template <int N, class TMappings, class sm_impl, class State, class TEvent, class TDeps, class TSubs, class TState1, class TState2, class TState3, class TState4, class TState5, class TState6, class TState7, class TState8, class TState9, class TState10, class TState11, class TState12, class TState13, class TState14>
+  [[gnu::always_inline]] static bool dispatch(sm_impl &self, State &current_state, const TEvent &event, TDeps &deps, TSubs &subs,
+                       const aux::type_list<TState1, TState2, TState3, TState4, TState5, TState6, TState7, TState8, TState9, TState10, TState11, TState12, TState13, TState14> &) {
+    static constexpr const void* dispatch_table[] = { &&state1, &&state2, &&state3, &&state4, &&state5, &&state6, &&state7, &&state8, &&state9, &&state10, &&state11, &&state12, &&state13, &&state14 };
+    goto *dispatch_table[current_state];
+    state1: return back::get_state_mapping_t<TState1, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state2: return back::get_state_mapping_t<TState2, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state3: return back::get_state_mapping_t<TState3, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state4: return back::get_state_mapping_t<TState4, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state5: return back::get_state_mapping_t<TState5, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state6: return back::get_state_mapping_t<TState6, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state7: return back::get_state_mapping_t<TState7, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state8: return back::get_state_mapping_t<TState8, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state9: return back::get_state_mapping_t<TState9, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state10: return back::get_state_mapping_t<TState10, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state11: return back::get_state_mapping_t<TState11, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state12: return back::get_state_mapping_t<TState12, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state13: return back::get_state_mapping_t<TState13, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state14: return back::get_state_mapping_t<TState14, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+  }
+  template <int N, class TMappings, class sm_impl, class State, class TEvent, class TDeps, class TSubs, class TState1, class TState2, class TState3, class TState4, class TState5, class TState6, class TState7, class TState8, class TState9, class TState10, class TState11, class TState12, class TState13, class TState14, class TState15>
+  [[gnu::always_inline]] static bool dispatch(sm_impl &self, State &current_state, const TEvent &event, TDeps &deps, TSubs &subs,
+                       const aux::type_list<TState1, TState2, TState3, TState4, TState5, TState6, TState7, TState8, TState9, TState10, TState11, TState12, TState13, TState14, TState15> &) {
+    static constexpr const void* dispatch_table[] = { &&state1, &&state2, &&state3, &&state4, &&state5, &&state6, &&state7, &&state8, &&state9, &&state10, &&state11, &&state12, &&state13, &&state14, &&state15 };
+    goto *dispatch_table[current_state];
+    state1: return back::get_state_mapping_t<TState1, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state2: return back::get_state_mapping_t<TState2, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state3: return back::get_state_mapping_t<TState3, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state4: return back::get_state_mapping_t<TState4, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state5: return back::get_state_mapping_t<TState5, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state6: return back::get_state_mapping_t<TState6, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state7: return back::get_state_mapping_t<TState7, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state8: return back::get_state_mapping_t<TState8, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state9: return back::get_state_mapping_t<TState9, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state10: return back::get_state_mapping_t<TState10, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state11: return back::get_state_mapping_t<TState11, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state12: return back::get_state_mapping_t<TState12, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state13: return back::get_state_mapping_t<TState13, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state14: return back::get_state_mapping_t<TState14, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state15: return back::get_state_mapping_t<TState15, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+  }
+  template <int N, class TMappings, class sm_impl, class State, class TEvent, class TDeps, class TSubs, class TState1, class TState2, class TState3, class TState4, class TState5, class TState6, class TState7, class TState8, class TState9, class TState10, class TState11, class TState12, class TState13, class TState14, class TState15, class TState16>
+  [[gnu::always_inline]] static bool dispatch(sm_impl &self, State &current_state, const TEvent &event, TDeps &deps, TSubs &subs,
+                       const aux::type_list<TState1, TState2, TState3, TState4, TState5, TState6, TState7, TState8, TState9, TState10, TState11, TState12, TState13, TState14, TState15, TState16> &) {
+    static constexpr const void* dispatch_table[] = { &&state1, &&state2, &&state3, &&state4, &&state5, &&state6, &&state7, &&state8, &&state9, &&state10, &&state11, &&state12, &&state13, &&state14, &&state15, &&state16 };
+    goto *dispatch_table[current_state];
+    state1: return back::get_state_mapping_t<TState1, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state2: return back::get_state_mapping_t<TState2, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state3: return back::get_state_mapping_t<TState3, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state4: return back::get_state_mapping_t<TState4, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state5: return back::get_state_mapping_t<TState5, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state6: return back::get_state_mapping_t<TState6, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state7: return back::get_state_mapping_t<TState7, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state8: return back::get_state_mapping_t<TState8, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state9: return back::get_state_mapping_t<TState9, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state10: return back::get_state_mapping_t<TState10, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state11: return back::get_state_mapping_t<TState11, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state12: return back::get_state_mapping_t<TState12, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state13: return back::get_state_mapping_t<TState13, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state14: return back::get_state_mapping_t<TState14, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state15: return back::get_state_mapping_t<TState15, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+    state16: return back::get_state_mapping_t<TState16, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state);
+  }
+};
+
 template <class TSM>
 struct sm_impl {
   using sm_t = typename TSM::sm;
@@ -1225,8 +1453,7 @@ struct sm_impl {
   template <class TMappings, class TEvent, class TDeps, class TSubs, class TState>
   bool process_event_impl(const TEvent &event, TDeps &deps, TSubs &subs, const aux::type_list<TState> &, aux::index_sequence<>) {
     aux::byte unused{};
-    get_state_mapping_t<TState, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, *this, deps, subs, unused);
-    return true;
+    return get_state_mapping_t<TState, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, *this, deps, subs, unused);
   }
 
   template <class TMappings, class TEvent, class TDeps, class TSubs, class... TStates>
