@@ -703,7 +703,7 @@ struct sm_policy {
   using defer_queue_policy = decltype(get_policy<no_policy, defer_queue_policy__>((aux::inherit<TPolicies...> *)0));
   using logger_policy = decltype(get_policy<no_policy, logger_policy__>((aux::inherit<TPolicies...> *)0));
   using testing_policy = decltype(get_policy<no_policy, testing_policy__>((aux::inherit<TPolicies...> *)0));
-  using dispatch_policy = decltype(get_policy<struct goto_stm, dispatch_policy__>((aux::inherit<TPolicies...> *)0));
+  using dispatch_policy = decltype(get_policy<struct branch_stm, dispatch_policy__>((aux::inherit<TPolicies...> *)0));
   template <class T>
   using rebind = typename rebind_impl<T, TPolicies...>::type;
 };
