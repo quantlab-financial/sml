@@ -11,6 +11,7 @@
 #include <variant>
 #include <tuple>
 #include <boost/range/adaptor/transformed.hpp>
+#include <boost/mp11/algorithm.hpp>
 
 #if (__cplusplus < 201305L && _MSC_VER < 1900)
 #error "[Boost].SML requires C++14 support (Clang-3.4+, GCC-5.1+, MSVC-2015+)"
@@ -273,7 +274,7 @@ struct unique : unique_impl<type<none_type>, Ts...> {};
 template <class T>
 struct unique<T> : type_list<T> {};
 template <class... Ts>
-using unique_t = typename unique<Ts...>::type;
+using unique_t = boost::mp11::mp_unique<aux::type_list<Ts...>>;
 template <class, class...>
 struct is_unique;
 template <class T>
@@ -568,19 +569,19 @@ struct get_all_events_impl<TSrc, TDst, unexpected_event<TEvent>> {
 };
 template <class TSrc, class TDst, class... TEvents>
 struct get_all_events_impl<TSrc, TDst, aux::type_list<TEvents...>> {
-  using type = aux::type_list<TEvents...>;
+  using type = boost::mp11::mp_unique<aux::type_list<TEvents...>>;
 };
 template <class TSrc, class TDst, class TEvent>
 struct get_all_events_impl<sm<TSrc>, TDst, TEvent> {
-  using type = aux::join_t<get_event<TEvent>, typename sm<TSrc>::events>;
+  using type = boost::mp11::mp_unique<aux::join_t<get_event<TEvent>, typename sm<TSrc>::events>>;
 };
 template <class TSrc, class TDst, class TEvent>
 struct get_all_events_impl<TSrc, sm<TDst>, TEvent> {
-  using type = aux::join_t<get_event<TEvent>, typename sm<TDst>::events>;
+  using type = boost::mp11::mp_unique<aux::join_t<get_event<TEvent>, typename sm<TDst>::events>>;
 };
 template <class TSrc, class TDst, class TEvent>
 struct get_all_events_impl<sm<TSrc>, sm<TDst>, TEvent> {
-  using type = aux::join_t<get_event<TEvent>, typename sm<TSrc>::events, typename sm<TDst>::events>;
+  using type = boost::mp11::mp_unique<aux::join_t<get_event<TEvent>, typename sm<TSrc>::events, typename sm<TDst>::events>>;
 };
 template <class, class TEvent>
 struct get_sub_internal_events_impl {
@@ -588,7 +589,7 @@ struct get_sub_internal_events_impl {
 };
 template <class T, class TEvent>
 struct get_sub_internal_events_impl<sm<T>, TEvent> {
-  using type = aux::join_t<aux::type_list<TEvent>, typename sm_impl<T>::sub_internal_events_t>;
+  using type = boost::mp11::mp_unique<aux::join_t<aux::type_list<TEvent>, typename sm_impl<T>::sub_internal_events_t>>;
 };
 template <class... Ts>
 using get_all_events =
@@ -957,6 +958,7 @@ template <class T, class TMappings, class TUnexpected>
 struct get_state_mapping {
   using type = decltype(get_state_mapping_impl<T, TUnexpected>((TMappings *)0));
 };
+#if 0
 template <class S>
 transitions_sub<S> get_sub_state_mapping_impl(...);
 template <class T, class... Ts>
@@ -965,6 +967,7 @@ template <class T, class TMappings, class TUnexpected>
 struct get_state_mapping<sm<T>, TMappings, TUnexpected> {
   using type = decltype(get_sub_state_mapping_impl<sm<T>>((TMappings *)0));
 };
+#endif
 template <class T, class TMappings, class TUnexpected>
 using get_state_mapping_t = typename get_state_mapping<T, TMappings, TUnexpected>::type;
 template <class>
