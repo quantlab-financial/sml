@@ -1937,14 +1937,27 @@ class and_ : operator_base {
   constexpr explicit and_(Ts... ts) : g(ts...) {}
   template <class TEvent, class TSM, class TDeps, class TSubs>
   constexpr auto operator()(const TEvent &event, TSM &sm, TDeps &deps, TSubs &subs) {
-    return for_all(aux::make_index_sequence<sizeof...(Ts)>{}, event, sm, deps, subs);
+    return for_all<Ts...>(aux::make_index_sequence<sizeof...(Ts)>{}, event, sm, deps, subs);
   }
 
  private:
-  template <int... Ns, class TEvent, class TSM, class TDeps, class TSubs>
-  constexpr auto for_all(const aux::index_sequence<Ns...> &, const TEvent &event, TSM &sm, TDeps &deps, TSubs &subs) {
-    return (call<TEvent, args_t<Ts, TEvent>, typename TSM::logger_t>::execute(aux::get_by_id<Ns>(&g), event, sm, deps, subs) &&
-            ...);
+  template <class T, class... Xs, int N, int... Ns, class TEvent, class TSM, class TDeps, class TSubs>
+  constexpr auto for_all(const aux::index_sequence<N, Ns...> &, const TEvent &event, TSM &sm, TDeps &deps, TSubs &subs) {
+    using g_t = decltype(call<TEvent, args_t<T, TEvent>, typename TSM::logger_t>::execute(aux::get_by_id<N>(&g), event, sm, deps, subs));
+    if constexpr(requires{ g_t::value; }) {
+      if constexpr (g_t::value) {
+        if constexpr(sizeof...(Xs) == 0u)
+          return true;
+        else
+          return for_all<Xs...>(aux::index_sequence<Ns...>{}, event, sm, deps, subs);
+      }
+    } else if (call<TEvent, args_t<T, TEvent>, typename TSM::logger_t>::execute(aux::get_by_id<N>(&g), event, sm, deps, subs)) {
+      if constexpr(sizeof...(Xs) == 0u)
+        return true;
+      else
+        return for_all<Xs...>(aux::index_sequence<Ns...>{}, event, sm, deps, subs);
+    }
+    return false;
   }
   aux::tuple<Ts...> g;
 };
@@ -1954,14 +1967,31 @@ class or_ : operator_base {
   constexpr explicit or_(Ts... ts) : g(ts...) {}
   template <class TEvent, class TSM, class TDeps, class TSubs>
   constexpr auto operator()(const TEvent &event, TSM &sm, TDeps &deps, TSubs &subs) {
-    return for_all(aux::make_index_sequence<sizeof...(Ts)>{}, event, sm, deps, subs);
+    return for_all<Ts...>(aux::make_index_sequence<sizeof...(Ts)>{}, event, sm, deps, subs);
   }
 
  private:
-  template <int... Ns, class TEvent, class TSM, class TDeps, class TSubs>
-  constexpr auto for_all(const aux::index_sequence<Ns...> &, const TEvent &event, TSM &sm, TDeps &deps, TSubs &subs) {
-    return (call<TEvent, args_t<Ts, TEvent>, typename TSM::logger_t>::execute(aux::get_by_id<Ns>(&g), event, sm, deps, subs) ||
-            ...);
+  template <class T, class... Xs, int N, int... Ns, class TEvent, class TSM, class TDeps, class TSubs>
+  constexpr auto for_all(const aux::index_sequence<N, Ns...> &, const TEvent &event, TSM &sm, TDeps &deps, TSubs &subs) {
+    using g_t = decltype(call<TEvent, args_t<T, TEvent>, typename TSM::logger_t>::execute(aux::get_by_id<N>(&g), event, sm, deps, subs));
+    if constexpr(requires{ g_t::value; }) {
+      if constexpr (g_t::value) {
+          return true;
+      } else {
+        if constexpr(sizeof...(Xs) == 0u)
+          return false;
+        else
+          return for_all<Xs...>(aux::index_sequence<Ns...>{}, event, sm, deps, subs);
+      }
+    } else if (call<TEvent, args_t<T, TEvent>, typename TSM::logger_t>::execute(aux::get_by_id<N>(&g), event, sm, deps, subs)) {
+      return true;
+    } else {
+        if constexpr(sizeof...(Xs) == 0u)
+          return false;
+        else
+          return for_all<Xs...>(aux::index_sequence<Ns...>{}, event, sm, deps, subs);
+    }
+    return false;
   }
   aux::tuple<Ts...> g;
 };
