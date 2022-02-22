@@ -2083,17 +2083,22 @@ struct event_traits {
 
 template<class... Ts>
 struct event_traits<std::variant<Ts...>> {
-  using type = boost::mp11::mp_list<Ts...>;
+  using type = boost::mp11::mp_list<typename event_traits<Ts>::type...>;
+};
+
+template<class... Ts>
+struct event_traits<std::pair<Ts...>> {
+  using type = boost::mp11::mp_list<typename event_traits<Ts>::type...>;
 };
 
 template<class... Ts>
 struct event_traits<std::tuple<Ts...>> {
-  using type = boost::mp11::mp_list<Ts...>;
+  using type = boost::mp11::mp_list<typename event_traits<Ts>::type...>;
 };
 
 template<class T>
 struct event_traits<std::vector<T>> {
-  using type = typename event_traits<T>::type;
+  using type = typename event_traits<typename event_traits<T>::type>::type;
 };
 
 template<class F, class T>
