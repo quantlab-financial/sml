@@ -2126,7 +2126,7 @@ struct emit : action_base, expr_base {
         const auto& e = apply(expr, deps.args, deps.deps, get_arg(aux::type<Ts>{}, event, deps)...);
         if constexpr (requires { e(); }) {
           aux::on(e(), aux::get_by_type<TArgs>(&args)...);
-        } else if constexpr (requires { std::cbegin(e); std::cend(e); }) {
+        } else if constexpr (requires { std::cbegin(e); std::cend(e); } and not requires { e.npos; }) {
           for (const auto& event : e) {
             if constexpr(aux::is_tuple<decltype(event)>) {
               std:apply([&](const auto&... events) { (aux::on(events, aux::get_by_type<TArgs>(&args)...), ...); }, event);
