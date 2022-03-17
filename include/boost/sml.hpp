@@ -322,16 +322,27 @@ struct init {};
 template <class T, class = void>
 struct pool_type_impl {
   template<class U>
-  constexpr explicit pool_type_impl(U& value) : value{value} {}
+  constexpr explicit pool_type_impl(U& value) : value{value} {
+  }
   T value;
+};
+
+template <class T>
+struct pool_type_impl<T&, aux::enable_if_t<!aux::is_constructible<T>::value>> {
+  template<class U>
+  constexpr explicit pool_type_impl(U& value) : value{value} {
+  }
+  T& value;
 };
 
 template <class T>
 struct pool_type_impl<T&, aux::enable_if_t<aux::is_constructible<T>::value>> {
   constexpr pool_type_impl() : value_{}, value{value_} {}
-  constexpr explicit pool_type_impl(T& value) : value{value} {}
+  constexpr explicit pool_type_impl(T& value) : value{value} {
+  }
   template<class TObject>
-  constexpr explicit pool_type_impl(const TObject& value) : value_{value}, value{value_} {}
+  constexpr explicit pool_type_impl(const TObject& value) : value_{value}, value{value_} {
+  }
   T value_;
   T& value;
 };
@@ -355,12 +366,14 @@ template<class T, class... Ts> constexpr auto contains = (aux::is_same<T, Ts>::v
 
 struct nothing {
   constexpr nothing() = default;
-  template<class T> constexpr nothing(T&&) {}
+  template<class T> constexpr nothing(T&&) { }
 };
 
 template <class... Ts>
 struct pool : pool_type<Ts>..., nothing {
-  template <class... TArgs> constexpr pool(TArgs&... args) : aux::conditional_t<contains<TArgs, Ts...>, pool_type<TArgs>, nothing>(args)... {}
+  template <auto... Ns, class... TArgs> constexpr pool(TArgs&... args)
+    : aux::conditional_t<contains<TArgs, Ts...>, pool_type<TArgs>, aux::conditional_t<contains<TArgs&, Ts...>, pool_type<TArgs&>, std::conditional_t<contains<const TArgs&, Ts...>, pool_type<const TArgs&>, nothing>>>(args)... {}
+
   template <class TArg> constexpr pool(init, TArg& arg) : pool_type<Ts>(arg)... {}
 };
 template <>
@@ -1630,7 +1643,7 @@ class sm {
   }
 
   template <class... TDeps, __BOOST_SML_REQUIRES(aux::is_unique_t<TDeps...>::value)>
-  explicit sm(TDeps &... deps) : deps_{deps...}, sub_sms_{aux::init{}, sm_} {
+  explicit sm(TDeps &&... deps) : deps_{std::forward<TDeps>(deps)...}, sub_sms_{aux::init{}, sm_} {
     struct _deps {
       deps_t& deps;
       aux::tuple<> args;
