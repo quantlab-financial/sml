@@ -2138,7 +2138,7 @@ struct emit : action_base, expr_base {
   }
 
   template<class TEvent, class TDeps>
-  auto on(const TEvent& event, const TDeps& deps) {
+  auto on(const TEvent& event, const TDeps& deps) -> void {
     if constexpr (requires { deps.args; }) {
       [&]<template <class...> class TList, class... Ts, class... TArgs>(const TList<Ts...>&, aux::tuple<TArgs...>& args) {
         const auto& e = apply(expr, deps.args, deps.deps, get_arg(aux::type<Ts>{}, event, deps)...);
