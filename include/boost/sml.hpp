@@ -2134,37 +2134,36 @@ struct emit : action_base, expr_base {
 
   template <class TEvent, class TSM, class TDeps, class TSubs>
   auto operator()(const TEvent & event, const TSM &, const TDeps & deps, const TSubs &) -> void {
-    on(event, deps);
-  }
-
-  template<class TEvent, class TDeps>
-  auto on(const TEvent& event, const TDeps& deps) -> void {
     if constexpr (requires { deps.args; }) {
       [&]<template <class...> class TList, class... Ts, class... TArgs>(const TList<Ts...>&, aux::tuple<TArgs...>& args) {
         const auto& e = apply(expr, deps.args, deps.deps, get_arg(aux::type<Ts>{}, event, deps)...);
-        if constexpr (requires { e(); }) {
-          on(e(), deps);
-        } else if constexpr (requires { e.has_value(); *e; }) {
-            on(*e, deps);
-        } else if constexpr (requires { std::cbegin(e); std::cend(e); } and not requires { e.npos; }) {
-          for (const auto& event : e) {
-            if constexpr(aux::is_tuple<decltype(event)>) {
-              std:apply([&](const auto&... events) { (on(events, deps), ...); }, event);
-            } else if constexpr (requires { event.index(); }) {
-              std::visit([ & ](const auto &e) { on(e, deps); }, event);
-            } else {
-              on(event, deps);
-            }
-          }
-        } else {
-          aux::on(e, aux::get_by_type<TArgs>(&args)...);
-        }
-      }
-      (args_t<TExpr, TEvent>{}, deps.args);
+        on(e, args);
+      }(args_t<TExpr, TEvent>{}, deps.args);
     }
   }
 
  private:
+  template<class TEvent, class... TArgs>
+  auto on(const TEvent& e, aux::tuple<TArgs...>& args) -> void {
+    if constexpr (requires { e(); }) {
+      on(e(), args);
+    } else if constexpr (requires { e.has_value(); *e; }) {
+        on(*e, args);
+    } else if constexpr (requires { std::cbegin(e); std::cend(e); } and not requires { e.npos; }) {
+      for (const auto& event : e) {
+        if constexpr(aux::is_tuple<decltype(event)>) {
+          std:apply([&](const auto&... events) { (on(events, args), ...); }, event);
+        } else if constexpr (requires { event.index(); }) {
+          std::visit([ & ](const auto &e) { on(e, args); }, event);
+        } else {
+          on(event, args);
+        }
+      }
+    } else {
+      aux::on(e, aux::get_by_type<TArgs>(&args)...);
+    }
+  }
+
   TExpr expr{};
 };
 }  // namespace actions
