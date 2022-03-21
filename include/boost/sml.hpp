@@ -2146,8 +2146,8 @@ struct emit : action_base, expr_base {
   auto on(const TEvent& e, aux::tuple<TArgs...>& args) -> void {
     if constexpr (requires { e(); }) {
       on(e(), args);
-    } else if constexpr (requires { e.has_value(); *e; }) {
-        on(*e, args);
+    } else if constexpr (requires { e.has_value(); *e; } and not requires { typename TEvent::name; }) {
+      on(*e, args);
     } else if constexpr (requires { std::cbegin(e); std::cend(e); } and not requires { e.npos; }) {
       for (const auto& event : e) {
         if constexpr(aux::is_tuple<decltype(event)>) {
