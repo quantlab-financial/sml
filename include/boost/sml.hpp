@@ -2134,19 +2134,26 @@ struct emit : action_base, expr_base {
 
   template <class TEvent, class TSM, class TDeps, class TSubs>
   auto operator()(const TEvent & event, const TSM &, const TDeps & deps, const TSubs &) -> void {
+    on(event, deps);
+  }
+
+  template<class TEvent, class TDeps>
+  auto on(const TEvent& event, const TDeps& deps) {
     if constexpr (requires { deps.args; }) {
       [&]<template <class...> class TList, class... Ts, class... TArgs>(const TList<Ts...>&, aux::tuple<TArgs...>& args) {
         const auto& e = apply(expr, deps.args, deps.deps, get_arg(aux::type<Ts>{}, event, deps)...);
         if constexpr (requires { e(); }) {
-          aux::on(e(), aux::get_by_type<TArgs>(&args)...);
+          on(e(), deps);
+        } else if constexpr (requires { e.has_value(); *e; }) {
+            on(*e, deps);
         } else if constexpr (requires { std::cbegin(e); std::cend(e); } and not requires { e.npos; }) {
           for (const auto& event : e) {
             if constexpr(aux::is_tuple<decltype(event)>) {
-              std:apply([&](const auto&... events) { (aux::on(events, aux::get_by_type<TArgs>(&args)...), ...); }, event);
+              std:apply([&](const auto&... events) { (on(events, deps), ...); }, event);
             } else if constexpr (requires { event.index(); }) {
-              std::visit([ & ](const auto &e) { aux::on(e, aux::get_by_type<TArgs>(&args)...); }, event);
+              std::visit([ & ](const auto &e) { on(e, deps); }, event);
             } else {
-              aux::on(event, aux::get_by_type<TArgs>(&args)...);
+              on(event, deps);
             }
           }
         } else {
