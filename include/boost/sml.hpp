@@ -2136,8 +2136,7 @@ struct emit : action_base, expr_base {
   auto operator()(const TEvent & event, const TSM &, const TDeps & deps, const TSubs &) -> void {
     if constexpr (requires { deps.args; }) {
       [&]<template <class...> class TList, class... Ts, class... TArgs>(const TList<Ts...>&, aux::tuple<TArgs...>& args) {
-        const auto& e = apply(expr, deps.args, deps.deps, get_arg(aux::type<Ts>{}, event, deps)...);
-        on(e, args);
+        on(apply(expr, deps.args, deps.deps, get_arg(aux::type<Ts>{}, event, deps)...), args);
       }(args_t<TExpr, TEvent>{}, deps.args);
     }
   }
