@@ -2126,14 +2126,14 @@ struct emit : action_base, expr_base {
   constexpr explicit(true) emit(TExpr expr) : expr{expr} {}
 
   template <class TEvent>
-  auto operator()(const TEvent & event, ...) {
+  constexpr auto operator()(const TEvent & event, ...) {
     return []<template <class...> class TList, class... Ts>(TList<Ts...>) {
       return typename event_traits<std::remove_cvref_t<decltype(std::declval<TExpr>()(std::declval<Ts>()...))>>::type{};
     }(args_t<TExpr, TEvent>{});
   }
 
   template <class TEvent, class TSM, class TDeps, class TSubs>
-  auto operator()(const TEvent & event, const TSM &, const TDeps & deps, const TSubs &) -> void {
+  constexpr auto operator()(const TEvent & event, const TSM &, const TDeps & deps, const TSubs &) -> void {
     if constexpr (requires { deps.args; }) {
       [&]<template <class...> class TList, class... Ts, class... TArgs>(const TList<Ts...>&, aux::tuple<TArgs...>& args) {
         on(apply(expr, deps.args, deps.deps, get_arg(aux::type<Ts>{}, event, deps)...), args);
@@ -2143,7 +2143,7 @@ struct emit : action_base, expr_base {
 
  private:
   template<class TEvent, class... TArgs>
-  auto on(const TEvent& e, aux::tuple<TArgs...>& args) -> void {
+  constexpr auto on(const TEvent& e, aux::tuple<TArgs...>& args) -> void {
     if constexpr (requires { e(); }) {
       on(e(), args);
     } else if constexpr (requires { e.has_value(); *e; } and not requires { typename TEvent::name; }) {
@@ -2151,7 +2151,7 @@ struct emit : action_base, expr_base {
     } else if constexpr (requires { std::cbegin(e); std::cend(e); } and not requires { e.npos; }) {
       for (const auto& event : e) {
         if constexpr(aux::is_tuple<decltype(event)>) {
-          std:apply([&](const auto&... events) { (on(events, args), ...); }, event);
+          std::apply([&](const auto&... events) { (on(events, args), ...); }, event);
         } else if constexpr (requires { event.index(); }) {
           std::visit([ & ](const auto &e) { on(e, args); }, event);
         } else {
@@ -2880,9 +2880,9 @@ __BOOST_SML_UNUSED static front::state<back::terminate_state> X;
 __BOOST_SML_UNUSED static front::history_state H;
 __BOOST_SML_UNUSED static front::actions::defer defer;
 namespace front {
-__BOOST_SML_UNUSED static auto emit = [](auto expr) { return front::actions::emit{expr}; };
-__BOOST_SML_UNUSED static auto eval = state<class SML_EVAL>{};
-__BOOST_SML_UNUSED static auto fwd = []<class TEvent>(const TEvent& event, auto&... args) { aux::on(event, args...); return boost::mp11::mp_list<TEvent>{}; };
+__BOOST_SML_UNUSED static constexpr auto emit = [](auto expr) { return front::actions::emit{expr}; };
+__BOOST_SML_UNUSED static constexpr auto eval = state<class SML_EVAL>{};
+__BOOST_SML_UNUSED static constexpr auto fwd = []<class TEvent>(const TEvent& event, auto&... args) { aux::on(event, args...); return boost::mp11::mp_list<TEvent>{}; };
 }
 __BOOST_SML_UNUSED static front::actions::process process;
 template <class... Ts, __BOOST_SML_REQUIRES(aux::is_same<aux::bool_list<aux::always<Ts>::value...>,
