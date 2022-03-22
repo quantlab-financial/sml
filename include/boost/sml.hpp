@@ -1753,7 +1753,8 @@ template <template <class...> class T, class... Ts>
 struct is_pool<T<Ts...>> : aux::is_base_of<aux::pool<Ts...>, T<Ts...>> {};
 template <class T>
 struct composable : is_pool<decltype(composable_impl<T>(0))> {};
-
+template<class T>
+concept state_machine = is_pool<T>::value;
 }  // namespace concepts
 namespace front {
 struct operator_base {};
