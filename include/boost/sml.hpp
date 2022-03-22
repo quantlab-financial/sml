@@ -1747,7 +1747,7 @@ template <class>
 void composable_impl(...);
 template <class T>
 struct is_pool : aux::false_type {};
-template <template <class...> class T, class... Ts>
+template <class... Ts>
 struct is_pool<aux::pool<Ts...>> : aux::true_type{};
 template <template <class...> class T, class... Ts>
 struct is_pool<T<Ts...>> : aux::is_base_of<aux::pool<Ts...>, T<Ts...>> {};
