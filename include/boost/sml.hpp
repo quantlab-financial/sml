@@ -952,8 +952,8 @@ struct event_mappings_impl<T, aux::type_list<TEvents...>> {
     event_mappings<TEvents, aux::inherit<state_mappings<typename T::src_state, aux::type_list<T>>>>...
   >;
 };
-template <class... Ts>
-struct mappings<aux::pool<Ts...>>
+template <template<class...> class T, class... Ts>
+struct mappings<T<Ts...>>
   : aux::apply_t<
       unique_mappings_t,
       aux::join_t<
@@ -1746,7 +1746,14 @@ decltype(aux::declval<T>().operator()()) composable_impl(int);
 template <class>
 void composable_impl(...);
 template <class T>
-struct composable : aux::is<aux::pool, decltype(composable_impl<T>(0))> {};
+struct is_pool : aux::false_type {};
+template <template <class...> class T, class... Ts>
+struct is_pool<aux::pool<Ts...>> : aux::true_type{};
+template <template <class...> class T, class... Ts>
+struct is_pool<T<Ts...>> : aux::is_base_of<aux::pool<Ts...>, T<Ts...>> {};
+template <class T>
+struct composable : is_pool<decltype(composable_impl<T>(0))> {};
+
 }  // namespace concepts
 namespace front {
 struct operator_base {};
@@ -2168,7 +2175,8 @@ struct emit : action_base, expr_base {
 }  // namespace actions
 }  // namespace front
 namespace detail {
-template <class T, __BOOST_SML_REQUIRES(concepts::composable<typename T::sm>::value)>
+template <class T>
+  requires concepts::composable<typename T::sm>::value
 using state_machine = back::sm<T>;
 }
 template <class T>
@@ -2895,10 +2903,12 @@ auto make_dispatch_table(Ts... ts) {
   return aux::pool<Ts...>{ts...};
 }
 template <class... Ts>
+  requires aux::is_same<aux::bool_list<aux::always<Ts>::value...>, aux::bool_list<concepts::transitional<Ts>::value...>>::value
 struct transition_table : aux::pool<Ts...> {
   transition_table(Ts... ts) : aux::pool<Ts...>{ts...} {}
 };
 template <class... Ts>
+  requires aux::is_same<aux::bool_list<aux::always<Ts>::value...>, aux::bool_list<concepts::transitional<Ts>::value...>>::value
 struct dispatch_table : aux::pool<Ts...> {
   dispatch_table(Ts... ts) : aux::pool<Ts...>{ts...} {}
 };
