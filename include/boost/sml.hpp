@@ -2894,6 +2894,14 @@ template <class... Ts>
 auto make_dispatch_table(Ts... ts) {
   return aux::pool<Ts...>{ts...};
 }
+template <class... Ts>
+struct transition_table : aux::pool<Ts...> {
+  transition_table(Ts... ts) : aux::pool<Ts...>{ts...} {}
+};
+template <class... Ts>
+struct dispatch_table : aux::pool<Ts...> {
+  dispatch_table(Ts... ts) : aux::pool<Ts...>{ts...} {}
+};
 BOOST_SML_NAMESPACE_END
 #undef __BOOST_SML_UNUSED
 #undef __BOOST_SML_VT_INIT
