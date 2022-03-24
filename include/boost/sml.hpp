@@ -341,7 +341,7 @@ struct pool_type_impl<T&, aux::enable_if_t<aux::is_constructible<T>::value>> {
   constexpr explicit pool_type_impl(T& value) : value{value} {
   }
   constexpr pool_type_impl(pool_type_impl &&other) noexcept
-    : value_{std::move(other).value}, value{value_} {}
+    : value_{std::move(other.value)}, value{value_} {}
   template<class TObject>
   constexpr explicit pool_type_impl(const TObject& value) : value_{value}, value{value_} {
   }
