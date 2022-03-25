@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2016-2017 Kris Jusiak (kris at jusiak dot net)
+// Copyright (c) 2016-2020 Kris Jusiak (kris at jusiak dot net)
 //
 // Distributed under the Boost Software License, Version 1.0.
 // (See accompanying file LICENSE_1_0.txt or copy at
@@ -57,34 +57,6 @@ test di_ctor = [] {
   auto i = 42;
   auto injector = di::make_injector(di::bind<>.to(i));
   auto sm = injector.create<sml::sm<c>>();
-  expect(sm.is(idle));
-  sm.process_event(e1{});
-  expect(sm.is(idle));
-};
-
-template <class T = class TDdata>
-struct sm {
-  T &data;
-
-  auto operator()() const {
-    using namespace sml;
-    // clang-format off
-    return make_transition_table(
-      *idle + event<e1> / [this](int i) { expect(data == i); }
-    );
-    // clang-format on
-  }
-};
-
-test di_inject = [] {
-  auto i = 42;
-  // clang-format off
-  const auto injector = di::make_injector(
-    di::bind<sml::SM>.to<sm>(),
-    di::bind<class TDdata>.to(i)
-  );
-  // clang-format on
-  auto sm = injector.create<sml::sm>();
   expect(sm.is(idle));
   sm.process_event(e1{});
   expect(sm.is(idle));

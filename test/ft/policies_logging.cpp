@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2016-2017 Kris Jusiak (kris at jusiak dot net)
+// Copyright (c) 2016-2020 Kris Jusiak (kris at jusiak dot net)
 //
 // Distributed under the Boost Software License, Version 1.0.
 // (See accompanying file LICENSE_1_0.txt or copy at
@@ -180,13 +180,11 @@ test log_sub_sm = [] {
   // clang-format off
   std::vector<std::string> messages_expected = {
      "[c_log_sub_sm] e1"
-   , "[sub] e1"
    , "[c_log_sub_sm] sub(a) -> sub(b)"
    , "[c_log_sub_sm] e2"
    , "[sub] e2"
    , "[sub] idle -> terminate"
    , "[c_log_sub_sm] e3"
-   , "[sub] e3"
    , "[c_log_sub_sm] e3[guard]: true"
    , "[c_log_sub_sm] sub(b) -> terminate"
    , "[c_log_sub_sm] / action"
@@ -220,13 +218,11 @@ test log_sub_sm_mix = [] {
   // clang-format off
   std::vector<std::string> messages_expected = {
      "[c_log_sub_sm_mix] e1"
-   , "[sub] e1"
    , "[c_log_sub_sm_mix] sub(a) -> sub"
    , "[c_log_sub_sm_mix] e2"
    , "[sub] e2"
    , "[sub] idle -> terminate"
    , "[c_log_sub_sm_mix] e3"
-   , "[sub] e3"
    , "[c_log_sub_sm_mix] e3[guard]: true"
    , "[c_log_sub_sm_mix] sub -> terminate"
    , "[c_log_sub_sm_mix] / action"

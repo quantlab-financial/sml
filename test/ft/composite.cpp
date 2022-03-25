@@ -1,11 +1,12 @@
 //
-// Copyright (c) 2016-2017 Kris Jusiak (kris at jusiak dot net)
+// Copyright (c) 2016-2020 Kris Jusiak (kris at jusiak dot net)
 //
 // Distributed under the Boost Software License, Version 1.0.
 // (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
 //
 #include <boost/sml.hpp>
+#include <cstdio>
 #include <string>
 #include <utility>
 #include <vector>
@@ -74,9 +75,10 @@ test composite = [] {
     bool a_on_entry_sub_sm = false;
   };
 
-  c c_;
-  sub sub_;
-  sml::sm<c> sm{c_, sub_, 87.0, 42};
+  sml::sm<c> sm{87.0, 42};
+
+  c& c_ = sm;
+  sub& sub_ = sm;
 
   expect(sm.is(idle));
   sm.process_event(e1());
@@ -206,7 +208,10 @@ test composite_custom_ctor = [] {
   };
 
   constexpr auto i = 2;
-  auto test = [=](auto&& sm) {
+
+  {
+    in_sub = 0;
+    sml::sm<c> sm{sub{i}};
     expect(sm.is(idle));
     sm.process_event(e1());
 
@@ -221,27 +226,44 @@ test composite_custom_ctor = [] {
     sm.process_event(e5());
     expect(2 * i == in_sub);
     expect(sm.is(s2));
-  };
-
-  {
-    in_sub = 0;
-    sub sub_{i};
-    sml::sm<c> sm{sub_};
-    test(static_cast<decltype(sm)&&>(sm));
   }
 
   {
     in_sub = 0;
-    sub sub_{i};
-    sml::sm<c> sm{sub_};
-    test(static_cast<decltype(sm)&&>(sm));
+    sml::sm<c> sm{sub{i}};
+    expect(sm.is(idle));
+    sm.process_event(e1());
+
+    sm.process_event(e2());
+    expect(0 == in_sub);
+
+    sm.process_event(e3());
+    expect(1 * i == in_sub);
+
+    sm.process_event(e4());
+    expect(2 * i == in_sub);
+    sm.process_event(e5());
+    expect(2 * i == in_sub);
+    expect(sm.is(s2));
   }
 
   {
     in_sub = 0;
-    sub sub_{i};
-    sml::sm<c> sm{sub_};
-    test(static_cast<decltype(sm)&&>(sm));
+    sml::sm<c> sm{sub{i}};
+    expect(sm.is(idle));
+    sm.process_event(e1());
+
+    sm.process_event(e2());
+    expect(0 == in_sub);
+
+    sm.process_event(e3());
+    expect(1 * i == in_sub);
+
+    sm.process_event(e4());
+    expect(2 * i == in_sub);
+    sm.process_event(e5());
+    expect(2 * i == in_sub);
+    expect(sm.is(s2));
   }
 };
 
@@ -316,9 +338,9 @@ test composite_entry_exit_initial = [] {
     int exit_calls = 0;
   };
 
-  sub sub_;
-  c c_;
-  sml::sm<c> sm{c_, sub_};
+  sml::sm<c> sm;
+  const sub& sub_ = sm;
+  const c& c_ = sm;
   expect(1 == c_.entry_calls);
   expect(0 == c_.exit_calls);
   expect(1 == sub_.entry_calls);
@@ -708,6 +730,35 @@ test composite_entry_exit_sub_sm = [] {
   expect(std::vector<calls>{calls::ls2_1_exit, calls::sub2_exit, calls::sub1_entry, calls::ls1_1_entry} == c_);
 };
 
+test composite_entry_exit_sub_sm_only_dst = [] {
+  using namespace sml;
+
+  struct inner {
+    auto operator()() noexcept {
+      // clang-format off
+      return make_transition_table(
+        *state<struct inner1> + on_entry<_> / [](std::vector<bool>& entered) { entered.push_back(true); }
+      );
+      // clang-format on
+    }
+  };
+
+  struct outer {
+    auto operator()() noexcept {
+      // clang-format off
+      return make_transition_table(
+        *state<struct outer1> + event<e1> = state<inner>
+      );
+      // clang-format on
+    }
+  };
+
+  std::vector<bool> entered = {};
+  sm<outer> sm{entered};
+  sm.process_event(e1{});
+  expect(std::vector<bool>{true} == entered);
+};
+
 test composite_anonymous_transition_from_outer_state = [] {
   struct sub {
     auto operator()() const noexcept {
@@ -758,6 +809,7 @@ test composite_anonymous_transition_from_outer_state_orthogonal_regions = [] {
     sm.process_event(e1{});
     expect(sm.is(sml::state<sub>));
     expect(sm.is<decltype(sml::state<sub>)>(sml::X, idle2));
+    expect(sm.is<decltype(sml::state<sub>)>(sml::X));
   }
 
   {
@@ -777,6 +829,7 @@ test composite_anonymous_transition_from_outer_state_orthogonal_regions = [] {
     sm.process_event(e2{});
     expect(sm.is(s1));
     expect(sm.is<decltype(sml::state<sub>)>(sml::X, sml::X));
+    expect(sm.is<decltype(sml::state<sub>)>(sml::X));
   }
 };
 
@@ -829,6 +882,74 @@ test composite_with_names = [] {
 
   sm.process_event(e3{});
   expect(sm.is(sml::X));
+};
+
+test composite_sub_guards = [] {
+  enum class calls { a1_entry, a1_exit, a2_entry, a2_exit, b1_entry, b1_exit };
+
+  struct A {
+    auto operator()() const noexcept {
+      using namespace sml;
+      const auto a1 = state<class A1>;
+      const auto a2 = state<class A2>;
+      // clang-format off
+      return make_transition_table(
+        (*a1) [([](int& guard_counter, bool& is_ok) {guard_counter++; return is_ok;})] = a2,
+         a1 + sml::on_entry<_> / [](std::vector<calls>& c) { c.push_back(calls::a1_entry); },
+         a1 + sml::on_exit<_> / [](std::vector<calls>& c) { c.push_back(calls::a1_exit); },
+         a2 + sml::on_entry<_> / [](std::vector<calls>& c) { c.push_back(calls::a2_entry); },
+         a2 + sml::on_exit<_> / [](std::vector<calls>& c) { c.push_back(calls::a2_exit); }
+      );
+      // clang-format on
+    }
+  };
+
+  struct B {
+    auto operator()() const noexcept {
+      using namespace sml;
+      const auto b1 = state<class B1>;
+      const auto b2 = state<class B2>;
+      // clang-format off
+      return make_transition_table(
+        *b1 + event<e2> = b2,
+         b1 + sml::on_entry<_> / [](std::vector<calls>& c) { c.push_back(calls::b1_entry); },
+         b1 + sml::on_exit<_>  / [](std::vector<calls>& c) { c.push_back(calls::b1_exit); }
+      );
+      // clang-format on
+    }
+  };
+
+  struct SM {
+    auto operator()() const noexcept {
+      using namespace sml;
+      // clang-format off
+      return make_transition_table(
+        *state<class init> = state<A>,
+         state<A>  + event<e1> = state<B>,
+         state<B>  + event<e3> = X
+      );
+      // clang-format on
+    }
+  };
+
+  std::vector<calls> c_;
+  int guard_counter = 0;
+  bool is_ok = false;
+  sml::sm<SM> sm{c_, guard_counter, is_ok};
+  expect(std::vector<calls>{calls::a1_entry} == c_);
+  expect(guard_counter == 1);
+  guard_counter = {};
+  sm.process_event(e2{});
+  expect(guard_counter == 1);
+  guard_counter = {};
+  is_ok = true;
+  sm.process_event(e2{});
+  expect(guard_counter == 1);
+  expect(std::vector<calls>{calls::a1_entry, calls::a1_exit, calls::a2_entry} == c_);
+  guard_counter = {};
+  sm.process_event(e1{});
+  expect(guard_counter == 0);
+  expect(std::vector<calls>{calls::a1_entry, calls::a1_exit, calls::a2_entry, calls::a2_exit, calls::b1_entry} == c_);
 };
 
 #if !defined(_MSC_VER)

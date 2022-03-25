@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2016-2017 Kris Jusiak (kris at jusiak dot net)
+// Copyright (c) 2016-2020 Kris Jusiak (kris at jusiak dot net)
 //
 // Distributed under the Boost Software License, Version 1.0.
 // (See accompanying file LICENSE_1_0.txt or copy at
@@ -50,17 +50,17 @@ test transition_sizeof = [] {
   }
 
   {
-    auto t = "state"_s + "event"_e[([i] {})] / [] {};
+    auto t = "state"_s + "event"_e[([i] { (void)i; })] / [] {};
     static_expect(sizeof(i) == sizeof(t));
   }
 
   {
-    auto t = "state"_s + "event"_e[([] {})] / [i] {};
+    auto t = "state"_s + "event"_e[([] {})] / [i] { (void)i; };
     static_expect(sizeof(i) == sizeof(t));
   }
 
   {
-    auto t = "state"_s + "event"_e[([] {})] / [&i] {};
+    auto t = "state"_s + "event"_e[([] {})] / [&i] { (void)i; };
     static_expect(sizeof(&i) == sizeof(t));
   }
 };

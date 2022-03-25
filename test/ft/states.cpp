@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2016-2017 Kris Jusiak (kris at jusiak dot net)
+// Copyright (c) 2016-2020 Kris Jusiak (kris at jusiak dot net)
 //
 // Distributed under the Boost Software License, Version 1.0.
 // (See accompanying file LICENSE_1_0.txt or copy at
@@ -98,8 +98,8 @@ test states_entry_exit_actions = [] {
     int a_exit_action = 0;
   };
 
-  c c_;
-  sml::sm<c> sm{c_};
+  sml::sm<c> sm{};
+  c& c_ = sm;
   expect(!c_.a_entry_action);
   expect(sm.is(idle));
   sm.process_event(e1{});
@@ -165,8 +165,8 @@ test states_generic_entry_actions_with_events = [] {
     std::vector<std::type_index> entries;
   };
 
-  c c_;
-  sml::sm<c> sm{c_};
+  sml::sm<c> sm;
+  c& c_ = sm;
   expect(1 == c_.entries.size());
   expect(std::type_index(typeid(sml::anonymous)) == c_.entries[0]);
   c_.entries.clear();
@@ -208,8 +208,8 @@ test states_initial_entry_actions_with_events = [] {
     std::vector<std::type_index> entries;
   };
 
-  c c_;
-  sml::sm<c> sm{c_};
+  sml::sm<c> sm{};
+  c& c_ = sm;
   expect(3 == c_.entries.size());
   expect(std::vector<std::type_index>{std::type_index(typeid(sml::initial)), std::type_index(typeid(sml::anonymous)),
                                       std::type_index(typeid(sml::anonymous))} == c_.entries);

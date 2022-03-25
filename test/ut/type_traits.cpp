@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2016-2017 Kris Jusiak (kris at jusiak dot net)
+// Copyright (c) 2016-2020 Kris Jusiak (kris at jusiak dot net)
 //
 // Distributed under the Boost Software License, Version 1.0.
 // (See accompanying file LICENSE_1_0.txt or copy at
@@ -18,8 +18,9 @@ test is_same_types = [] {
 test remove_reference_types = [] {
   static_expect(is_same<int, remove_reference_t<int>>::value);
   static_expect(is_same<int, remove_reference_t<int&>>::value);
-  static_expect(is_same<int, remove_reference_t<const int&>>::value);
   static_expect(is_same<int, remove_reference_t<int&&>>::value);
+
+  static_expect(!is_same<int, remove_reference_t<const int&>>::value);
 };
 
 void f1() {}
@@ -56,4 +57,13 @@ test function_traits_parameters_type_const_methods = [] {
   static_expect(is_same<type_list<int, const double&>, typename function_traits<decltype(&c2::f3)>::args>::value);
 };
 
-}  // aux
+test is_empty_type = [] {
+  struct empty {};
+  struct non_empty {
+    int _;
+  };
+  static_expect(is_empty<empty>::value);
+  static_expect(!is_empty<non_empty>::value);
+};
+
+}  // namespace aux

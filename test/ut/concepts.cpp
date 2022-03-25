@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2016-2017 Kris Jusiak (kris at jusiak dot net)
+// Copyright (c) 2016-2020 Kris Jusiak (kris at jusiak dot net)
 //
 // Distributed under the Boost Software License, Version 1.0.
 // (See accompanying file LICENSE_1_0.txt or copy at
@@ -15,26 +15,28 @@
 
 namespace concepts {
 
-test composable_concept = [] {
-  struct c0 {};
-  struct c1 {
-    auto operator()() const noexcept { return aux::pool<>{}; }
-  };
-  struct c2 {
-    auto operator()() noexcept { return aux::pool<>{}; }
-  };
-  struct c3 {
-    auto operator()() { return aux::pool<>{}; }
-  };
-  struct c4 {
-    int operator()() { return {}; }
-  };
-  struct c5 {
-    auto setup() { return aux::pool<>{}; }
-  };
+struct c0 {};
+struct c1 {
+  auto operator()() const noexcept { return aux::pool<>{}; }
+};
+struct c2 {
+  auto operator()() noexcept { return aux::pool<>{}; }
+};
+struct c3 {
+  auto operator()() { return aux::pool<>{}; }
+};
+struct c4 {
+  int operator()() { return {}; }
+};
+struct c5 {
+  auto setup() { return aux::pool<>{}; }
+};
 
+test composable_concept = [] {
   static_expect(composable<c1>::value);
   static_expect(composable<c2>::value);
+  static_expect(composable<c3>::value);
+  static_expect(composable<c3>::value);
   static_expect(composable<c3>::value);
   static_expect(!composable<c0>::value);
   static_expect(!composable<c4>::value);
@@ -82,6 +84,25 @@ test callable_concept = [] {
   static_expect(callable<void, decltype(calll1)>::value);
   static_expect(callable<void, decltype(calll2)>::value);
   static_expect(callable<bool, decltype(calll3)>::value);
+
+#if defined(__cpp_noexcept_function_type)
+  struct class0 {
+    void action() {}
+    void const_action() const {}
+    void const_noexcept_action() const noexcept {}
+
+    bool guard() { return true; }
+    bool const_guard() const { return true; }
+    bool const_noexcept_guard() const noexcept { return true; }
+  };
+  static_expect(callable<void, decltype(&class0::action)>::value);
+  static_expect(callable<void, decltype(&class0::const_action)>::value);
+  static_expect(callable<void, decltype(&class0::const_noexcept_action)>::value);
+  static_expect(callable<bool, decltype(&class0::guard)>::value);
+  static_expect(callable<bool, decltype(&class0::const_guard)>::value);
+  static_expect(callable<bool, decltype(&class0::const_noexcept_guard)>::value);
+#endif
+
   (void)calll1;
   (void)calll2;
   (void)calll3;
@@ -121,4 +142,4 @@ test transitional_concept = [] {
   static_expect(!transitional<transition3>::value);
 };
 
-}  // concepts
+}  // namespace concepts

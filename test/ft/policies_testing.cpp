@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2016-2017 Kris Jusiak (kris at jusiak dot net)
+// Copyright (c) 2016-2020 Kris Jusiak (kris at jusiak dot net)
 //
 // Distributed under the Boost Software License, Version 1.0.
 // (See accompanying file LICENSE_1_0.txt or copy at
@@ -52,8 +52,7 @@ test sm_testing = [] {
 
   {
     data fake_data;
-    const data &c_fake_data = fake_data;
-    sml::sm<c, sml::testing> sm{c_fake_data, fake_data, true};
+    sml::sm<c, sml::testing> sm{fake_data, true};
     expect(sm.is(idle));
 
     sm.process_event(e1{});
@@ -68,11 +67,10 @@ test sm_testing = [] {
 
   {
     data fake_data;
-    const data &c_fake_data = fake_data;
-    sml::sm<c, sml::testing> sm{fake_data, c_fake_data, true};
+    sml::sm<c, sml::testing> sm{fake_data, true};
     expect(sm.is(idle));
 
-    sm.__set_current_states(s2);
+    sm.set_current_states(s2);
     fake_data.value = 42;
     sm.process_event(e3{});
     expect(sm.is(sml::X));
@@ -81,11 +79,10 @@ test sm_testing = [] {
 
   {
     data fake_data;
-    const data &c_fake_data = fake_data;
-    sml::sm<c, sml::testing> sm{c_fake_data, fake_data, true};
+    sml::sm<c, sml::testing> sm{fake_data, true};
     expect(sm.is(idle));
 
-    sm.__set_current_states(s2);
+    sm.set_current_states(s2);
     fake_data.value = 42;
     sm.process_event(e3{});
     expect(sm.is(sml::X));
@@ -94,16 +91,46 @@ test sm_testing = [] {
 
   {
     data fake_data;
-    const data &c_fake_data = fake_data;
-    sml::sm<c, sml::testing> sm{fake_data, c_fake_data, true};
+    sml::sm<c, sml::testing> sm{fake_data, true};
     expect(sm.is(idle));
 
-    sm.__set_current_states(s1);
+    sm.set_current_states(s1);
     fake_data.value = 42;
     sm.process_event(e2{});
     expect(sm.is(s2));
     expect(12 == fake_data.value);
   }
+};
+
+test sm_testing_composite = [] {
+  struct inner {
+    auto operator()() const noexcept {
+      using namespace sml;
+      // clang-format off
+      return make_transition_table(
+         *idle + event<e1> = s1
+      );
+      // clang-format on
+    }
+  };
+
+  struct outer {
+    auto operator()() const noexcept {
+      using namespace sml;
+      // clang-format off
+      return make_transition_table(
+         *idle2 + event<e2> = sml::state<inner>
+      );
+      // clang-format on
+    }
+  };
+
+  sml::sm<outer, sml::testing> sm;
+  expect(sm.is(idle2));
+  sm.set_current_states(sml::state<inner>);
+  sm.set_current_states<decltype(sml::state<inner>)>(s1);
+  expect(sm.is(sml::state<inner>));
+  expect(sm.is<decltype(sml::state<inner>)>(s1));
 };
 
 test sm_testing_orthogonal_regions = [] {
@@ -124,6 +151,6 @@ test sm_testing_orthogonal_regions = [] {
 
   sml::sm<c, sml::testing> sm;
   expect(sm.is(idle, idle2));
-  sm.__set_current_states(s1, s3);
+  sm.set_current_states(s1, s3);
   expect(sm.is(s1, s3));
 };

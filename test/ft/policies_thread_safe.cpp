@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2016-2017 Kris Jusiak (kris at jusiak dot net)
+// Copyright (c) 2016-2020 Kris Jusiak (kris at jusiak dot net)
 //
 // Distributed under the Boost Software License, Version 1.0.
 // (See accompanying file LICENSE_1_0.txt or copy at
@@ -7,6 +7,7 @@
 //
 #include <boost/sml.hpp>
 #include <mutex>
+#include <queue>
 #include <thread>
 
 namespace sml = boost::sml;
@@ -36,8 +37,8 @@ test process_the_same_event = [] {
     int action2_calls = 0;
   };
 
-  actions_guards ag;
-  sml::sm<actions_guards, sml::thread_safe<std::mutex>> sm{ag};
+  sml::sm<actions_guards, sml::thread_safe<std::mutex>> sm{};
+  const actions_guards& ag = sm;
   std::thread t1{[&] { sm.process_event(e1{}); }};
   std::thread t2{[&] { sm.process_event(e2{}); }};
   t1.join();
@@ -61,7 +62,7 @@ test process_event_reentrant = [] {
     }
   };
 
-  sml::sm<c, sml::thread_safe<std::recursive_mutex>> sm;
+  sml::sm<c, sml::process_queue<std::queue>, sml::thread_safe<std::recursive_mutex>> sm;
   // Hangs forever awaiting lock if mutex is not reentrant.
   sm.process_event(e1{});
 };

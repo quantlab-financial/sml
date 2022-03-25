@@ -2157,17 +2157,15 @@ struct emit : action_base, expr_base {
     if constexpr (requires { e(); }) {
       on(e(), args);
     } else if constexpr (requires { e.has_value(); *e; } and not requires { typename TEvent::name; }) {
-      on(*e, args);
-    } else if constexpr (requires { std::cbegin(e); std::cend(e); } and not requires { e.npos; }) {
-      for (const auto& event : e) {
-        if constexpr(aux::is_tuple<decltype(event)>) {
-          std::apply([&](const auto&... events) { (on(events, args), ...); }, event);
-        } else if constexpr (requires { event.index(); }) {
-          std::visit([ & ](const auto &e) { on(e, args); }, event);
-        } else {
-          on(event, args);
-        }
+      if (e) {
+        on(*e, args);
       }
+    } else if constexpr(aux::is_tuple<TEvent>) {
+        std::apply([&](const auto&... events) { (on(events, args), ...); }, e);
+    } else if constexpr (requires { e.index(); }) {
+      std::visit([ & ](const auto &event) { on(event, args); }, e);
+    } else if constexpr (requires { std::cbegin(e); std::cend(e); } and not requires { e.npos; }) {
+      for (const auto& event : e) { on(event, args); }
     } else {
       aux::on(e, aux::get_by_type<TArgs>(&args)...);
     }

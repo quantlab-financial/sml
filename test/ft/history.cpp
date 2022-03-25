@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2016-2017 Kris Jusiak (kris at jusiak dot net)
+// Copyright (c) 2016-2020 Kris Jusiak (kris at jusiak dot net)
 //
 // Distributed under the Boost Software License, Version 1.0.
 // (See accompanying file LICENSE_1_0.txt or copy at
@@ -55,9 +55,7 @@ test history = [] {
 
   using namespace sml;
 
-  c c_;
-  sub sub_;
-  sml::sm<c> sm{c_, sub_};
+  sml::sm<c> sm{};
 
   expect(sm.is(idle));
   sm.process_event(e1());
