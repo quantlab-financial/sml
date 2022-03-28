@@ -9,9 +9,9 @@
 #include <utility>
 #include <vector>
 #include <variant>
-#include <tuple>
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/mp11/algorithm.hpp>
+#include <tuple>
 
 #if (__cplusplus < 201305L && _MSC_VER < 1900)
 #error "[Boost].SML requires C++14 support (Clang-3.4+, GCC-5.1+, MSVC-2015+)"
@@ -1648,7 +1648,7 @@ class sm {
   explicit sm(TDeps &&... deps) : deps_{std::forward<TDeps>(deps)...}, sub_sms_{aux::init{}, sm_} {
     struct _deps {
       deps_t& deps;
-      aux::tuple<> args;
+      aux::tuple<> args{};
     } ds{deps_};
     aux::get<sm_impl<TSM>>(sub_sms_).start(ds, sub_sms_);
   }
@@ -2136,7 +2136,7 @@ struct emit : action_base, expr_base {
   constexpr explicit(true) emit(TExpr expr) : expr{expr} {}
 
   template <class TEvent>
-  constexpr auto operator()(const TEvent & event, ...) {
+  constexpr auto operator()(const TEvent &, ...) {
     return []<template <class...> class TList, class... Ts>(TList<Ts...>) {
       return typename event_traits<std::remove_cvref_t<decltype(std::declval<TExpr>()(std::declval<Ts>()...))>>::type{};
     }(args_t<TExpr, TEvent>{});

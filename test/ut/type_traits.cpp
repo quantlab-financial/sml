@@ -19,8 +19,6 @@ test remove_reference_types = [] {
   static_expect(is_same<int, remove_reference_t<int>>::value);
   static_expect(is_same<int, remove_reference_t<int&>>::value);
   static_expect(is_same<int, remove_reference_t<int&&>>::value);
-
-  static_expect(!is_same<int, remove_reference_t<const int&>>::value);
 };
 
 void f1() {}
@@ -55,15 +53,6 @@ test function_traits_parameters_type_const_methods = [] {
   static_expect(is_same<type_list<>, typename function_traits<decltype(&c2::f1)>::args>::value);
   static_expect(is_same<type_list<int>, typename function_traits<decltype(&c2::f2)>::args>::value);
   static_expect(is_same<type_list<int, const double&>, typename function_traits<decltype(&c2::f3)>::args>::value);
-};
-
-test is_empty_type = [] {
-  struct empty {};
-  struct non_empty {
-    int _;
-  };
-  static_expect(is_empty<empty>::value);
-  static_expect(!is_empty<non_empty>::value);
 };
 
 }  // namespace aux

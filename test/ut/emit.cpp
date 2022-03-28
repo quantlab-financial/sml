@@ -28,7 +28,7 @@ test emit_event = [] {
   sml::aux::tuple<fake_handler&> args{handler};
   struct {
     decltype(args)& args;
-    sml::aux::pool<> deps;
+    sml::aux::pool<> deps{};
   } deps{{args}};
   struct {} subs;
 
@@ -45,7 +45,7 @@ test emit_callable = [] {
   sml::aux::tuple<fake_handler&> args{handler};
   struct {
     decltype(args)& args;
-    sml::aux::pool<> deps;
+    sml::aux::pool<> deps{};
   } deps{{args}};
   struct {} subs;
 
@@ -62,7 +62,7 @@ test emit_optional = [] {
   sml::aux::tuple<fake_handler&> args{handler};
   struct {
     decltype(args)& args;
-    sml::aux::pool<> deps;
+    sml::aux::pool<> deps{};
   } deps{{args}};
   struct {} subs;
 
@@ -79,7 +79,7 @@ test emit_optional_disengaged = [] {
   sml::aux::tuple<fake_handler&> args{handler};
   struct {
     decltype(args)& args;
-    sml::aux::pool<> deps;
+    sml::aux::pool<> deps{};
   } deps{{args}};
   struct {} subs;
 
@@ -95,7 +95,7 @@ test emit_tuple = [] {
   sml::aux::tuple<fake_handler&> args{handler};
   struct {
     decltype(args)& args;
-    sml::aux::pool<> deps;
+    sml::aux::pool<> deps{};
   } deps{{args}};
   struct {} subs;
 
@@ -112,7 +112,7 @@ test emit_tuples = [] {
   sml::aux::tuple<fake_handler&> args{handler};
   struct {
     decltype(args)& args;
-    sml::aux::pool<> deps;
+    sml::aux::pool<> deps{};
   } deps{{args}};
   struct {} subs;
 
@@ -130,7 +130,7 @@ test emit_variant = [] {
   sml::aux::tuple<fake_handler&> args{handler};
   struct {
     decltype(args)& args;
-    sml::aux::pool<> deps;
+    sml::aux::pool<> deps{};
   } deps{{args}};
   struct {} subs;
 
@@ -147,7 +147,7 @@ test emit_variant_not_set = [] {
   sml::aux::tuple<fake_handler&> args{handler};
   struct {
     decltype(args)& args;
-    sml::aux::pool<> deps;
+    sml::aux::pool<> deps{};
   } deps{{args}};
   struct {} subs;
 
@@ -164,7 +164,7 @@ test emit_range = [] {
   sml::aux::tuple<fake_handler&> args{handler};
   struct {
     decltype(args)& args;
-    sml::aux::pool<> deps;
+    sml::aux::pool<> deps{};
   } deps{{args}};
   struct {} subs;
 
@@ -183,7 +183,7 @@ test emit_range_but_not_string = [] {
   sml::aux::tuple<fake_handler&> args{handler};
   struct {
     decltype(args)& args;
-    sml::aux::pool<> deps;
+    sml::aux::pool<> deps{};
   } deps{{args}};
   struct {} subs;
 
@@ -200,7 +200,7 @@ test emit_tuple_of_optional_ranges = [] {
   sml::aux::tuple<fake_handler&> args{handler};
   struct {
     decltype(args)& args;
-    sml::aux::pool<> deps;
+    sml::aux::pool<> deps{};
   } deps{{args}};
   struct {} subs;
 
@@ -221,7 +221,7 @@ test emit_range_of_tuples = [] {
   sml::aux::tuple<fake_handler&> args{handler};
   struct {
     decltype(args)& args;
-    sml::aux::pool<> deps;
+    sml::aux::pool<> deps{};
   } deps{{args}};
   struct {} subs;
 

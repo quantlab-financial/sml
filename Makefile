@@ -7,10 +7,10 @@
 .PHONY: all doc clean test example
 CXX?=clang++
 ifneq (, $(findstring clang++, $(CXX)))
-	CXXFLAGS+=-std=c++1y -Wall -Wextra -Werror -pedantic -pedantic-errors -I include -I .
+	CXXFLAGS+=-std=c++2b -Wall -Wno-dollar-in-identifier-extension -Wno-gnu-label-as-value -Wno-gnu-string-literal-operator-template -Wextra -Werror -pedantic -pedantic-errors -I include -I ../boost
 	INCLUDE_TEST=-include test/common/test.hpp
 else ifneq (, $(findstring g++, $(CXX)))
-	CXXFLAGS+=-std=c++1y -Wall -Wextra -Werror -pedantic -pedantic-errors -I include -I .
+	CXXFLAGS+=-std=c++2b -Wall -Wextra -Werror -pedantic -pedantic-errors -I include -I ../boost
 	INCLUDE_TEST=-include test/common/test.hpp
 else
 	CXXFLAGS+=-EHsc -W4 -WX -I include -I .
@@ -26,14 +26,14 @@ MKDOCS?=mkdocs
 MKDOCS_THEME?=boost-experimental
 MKDOCS_SITE?=site
 
-all: test example
+all: test
 
 pph:
 	@tools/pph.sh
 
 check: style
 
-test: $(patsubst %.cpp, %.out, $(wildcard test/ft/*.cpp test/ft/errors/*.cpp test/ut/*.cpp))
+test: $(patsubst %.cpp, %.out, $(wildcard test/ft/errors/*.cpp test/ut/*.cpp))
 
 test/ut/%.out:
 	$(CXX) test/ut/$*.cpp $(CXXFLAGS) -fno-exceptions $($(COVERAGE)) $(INCLUDE_TEST) -o test/ut/$*.out	&& $($(MEMCHECK)) test/ut/$*.out
@@ -59,7 +59,7 @@ test/ft/policies_thread_safe.out: #-fsanitize=thread
 test/ft/units.out:
 	$(CXX) test/ft/unit1.cpp test/ft/unit2.cpp  test/ft/units.cpp $(CXXFLAGS) -fno-exceptions $($(COVERAGE)) -o test/ft/units.out
 
-example: $(patsubst %.cpp, %.out, $(wildcard example/*.cpp))
+example:  example/hello_world.out
 
 example/%.out:
 	$(CXX) example/$*.cpp $(CXXFLAGS) -o example/$*.out && $($(MEMCHECK)) example/$*.out
