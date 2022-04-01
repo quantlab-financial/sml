@@ -2913,6 +2913,21 @@ template <class... Ts>
 struct dispatch_table : aux::pool<Ts...> {
   dispatch_table(Ts... ts) : aux::pool<Ts...>{ts...} {}
 };
+namespace dsl {
+using boost::sml::event;
+using boost::sml::make_dispatch_table;
+using boost::sml::make_transition_table;
+using boost::sml::dispatch_table;
+using boost::sml::transition_table;
+using boost::sml::operator,;
+using boost::sml::operator!;
+using boost::sml::operator||;
+using boost::sml::operator&&;
+using boost::sml::operator""_s;
+using boost::sml::front::emit;
+using boost::sml::front::eval;
+using boost::sml::front::fwd;
+} // namespace dsl
 BOOST_SML_NAMESPACE_END
 #undef __BOOST_SML_UNUSED
 #undef __BOOST_SML_VT_INIT
