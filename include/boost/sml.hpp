@@ -2927,6 +2927,7 @@ using boost::sml::operator""_s;
 using boost::sml::front::emit;
 using boost::sml::front::eval;
 using boost::sml::front::fwd;
+using boost::sml::X;
 } // namespace dsl
 BOOST_SML_NAMESPACE_END
 #undef __BOOST_SML_UNUSED
