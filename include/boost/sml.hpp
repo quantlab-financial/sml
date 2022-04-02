@@ -2137,9 +2137,13 @@ struct emit : action_base, expr_base {
 
   template <class TEvent>
   constexpr auto operator()(const TEvent &, ...) {
-    return []<template <class...> class TList, class... Ts>(TList<Ts...>) {
-      return typename event_traits<std::remove_cvref_t<decltype(std::declval<TExpr>()(std::declval<Ts>()...))>>::type{};
-    }(args_t<TExpr, TEvent>{});
+    if constexpr(concepts::callable<void, TExpr>::value) {
+      return []<template <class...> class TList, class... Ts>(TList<Ts...>) {
+        return typename event_traits<std::remove_cvref_t<decltype(std::declval<TExpr>()(std::declval<Ts>()...))>>::type{};
+      }(args_t<TExpr, TEvent>{});
+    } else {
+      return expr;
+    }
   }
 
   template <class TEvent, class TSM, class TDeps, class TSubs>
