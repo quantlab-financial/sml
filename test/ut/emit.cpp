@@ -231,3 +231,21 @@ test emit_range_of_tuples = [] {
   expect(1 == std::any_cast<int>(handler.on_calls[0]));
   expect(2 == std::any_cast<int>(handler.on_calls[1]));
 };
+
+test emit_struct = [] {
+  struct {} event{};
+  struct {} sm{};
+  fake_handler handler{};
+  sml::aux::tuple<fake_handler&> args{handler};
+  struct {
+    decltype(args)& args;
+    sml::aux::pool<> deps{};
+  } deps{{args}};
+  struct {} subs;
+  struct bar { int i{}; };
+
+  sml::front::actions::emit{bar{.i = 42}}(event, sm, deps, subs);
+
+  expect(1 == std::size(handler.on_calls));
+  expect(42 == std::any_cast<bar>(handler.on_calls[0]).i);
+};

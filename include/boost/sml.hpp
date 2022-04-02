@@ -2145,9 +2145,13 @@ struct emit : action_base, expr_base {
   template <class TEvent, class TSM, class TDeps, class TSubs>
   constexpr auto operator()(const TEvent & event, const TSM &, const TDeps & deps, const TSubs &) -> void {
     if constexpr (requires { deps.args; }) {
-      [&]<template <class...> class TList, class... Ts, class... TArgs>(const TList<Ts...>&, aux::tuple<TArgs...>& args) {
-        on(apply(expr, deps.args, deps.deps, get_arg(aux::type<Ts>{}, event, deps)...), args);
-      }(args_t<TExpr, TEvent>{}, deps.args);
+      if constexpr(concepts::callable<void, TExpr>::value) {
+        [&]<template <class...> class TList, class... Ts, class... TArgs>(const TList<Ts...>&, aux::tuple<TArgs...>& args) {
+          on(apply(expr, deps.args, deps.deps, get_arg(aux::type<Ts>{}, event, deps)...), args);
+        }(args_t<TExpr, TEvent>{}, deps.args);
+      } else {
+        on(expr, deps.args);
+      }
     }
   }
 
