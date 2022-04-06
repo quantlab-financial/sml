@@ -51,6 +51,30 @@ test process_event = [] {
   expect(sm.is(sml::X));
 };
 
+test process_current_event = [] {
+  struct c {
+    auto operator()() {
+      using namespace sml;
+      // clang-format off
+      return make_transition_table(
+         *idle + event<e1> = s1
+        , s1 + event<e2> [([this] { return a_called < 2;})] / (process(), [this] { a_called++; })
+      );
+      // clang-format on
+    }
+
+    int a_called = 0;
+  };
+
+  sml::sm<c> sm;
+  expect(sm.is(idle));
+  expect(sm.process_event(e1{}));
+  expect(sm.is(s1));
+  expect(!c_.a_called);
+  expect(sm.process_event(e2{}));  // + process(e2{})
+  expect(2 == c_.a_called);
+};
+
 test process_event_from_substate = [] {
   struct sub {
     auto operator()() const noexcept {

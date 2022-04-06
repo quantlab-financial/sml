@@ -2247,9 +2247,19 @@ struct process {
    private:
     TEvent event;
   };
+  class process_impl_ {
+   public:
+    template <class TEvent, class TSM, class TDeps, class TSubs>
+    void operator()(const TEvent & event, TSM &sm, TDeps &deps, TSubs &subs) {
+      sm.process_event(event, deps, subs);
+    }
+  };
   template <class TEvent>
   auto operator()(const TEvent &event) {
     return process_impl<TEvent>{event};
+  }
+  auto operator()() {
+    return process_impl_{};
   }
 };
 }  // namespace actions
@@ -2923,6 +2933,8 @@ struct dispatch_table : aux::pool<Ts...> {
 };
 namespace dsl {
 using boost::sml::event;
+using boost::sml::process;
+using boost::sml::X;
 using boost::sml::make_dispatch_table;
 using boost::sml::make_transition_table;
 using boost::sml::dispatch_table;
@@ -2935,7 +2947,6 @@ using boost::sml::operator""_s;
 using boost::sml::front::emit;
 using boost::sml::front::eval;
 using boost::sml::front::fwd;
-using boost::sml::X;
 } // namespace dsl
 BOOST_SML_NAMESPACE_END
 #undef __BOOST_SML_UNUSED
