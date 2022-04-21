@@ -2234,18 +2234,39 @@ struct process {
    private:
     aux::conditional_t<aux::is_constructible<TEvent, const TEvent &>::value, TEvent, const TEvent &> event;
   };
-  template <class TEvent>
-  class process_impl<TEvent, aux::enable_if_t<concepts::callable<void, TEvent>::value>> : public action_base {
+  template <class TExpr>
+  class process_impl<TExpr, aux::enable_if_t<concepts::callable<void, TExpr>::value>> : public action_base {
    public:
-    explicit process_impl(const TEvent &event) : event(event) {}
+    explicit process_impl(const TExpr &expr) : expr{expr} {}
 
-    template <class T, class TSM, class TDeps, class TSubs>
-    void operator()(const T &, TSM &sm, TDeps &deps, TSubs &subs) {
-      sm.process_event(event(), deps, subs);
+    template <class TEvent, class TSM, class TDeps, class TSubs>
+    void operator()(const TEvent &event, TSM &sm, TDeps &deps, TSubs &subs) {
+      [&]<template <class...> class TList, class... Ts, class... TArgs>(const TList<Ts...>&) {
+        process(apply(expr, deps.args, deps.deps, get_arg(aux::type<Ts>{}, event, deps)...), sm, deps, subs);
+      }(args_t<TExpr, TEvent>{});
     }
 
    private:
-    TEvent event;
+    template<class TEvent>
+    constexpr auto process(const TEvent& e, auto& sm, auto& deps, auto& subs) -> void {
+      if constexpr (requires { e(); }) {
+        process(e(), sm, deps, subs);
+      } else if constexpr (requires { e.has_value(); *e; }) {
+        if (e) {
+          process(*e, sm, deps, subs);
+        }
+      } else if constexpr(aux::is_tuple<TEvent>) {
+          std::apply([&](const auto&... events) { (process(events, sm, deps, subs), ...); }, e);
+      } else if constexpr (requires { e.index(); }) {
+        std::visit([ & ](const auto &event) { process(event, sm, deps, subs); }, e);
+      } else if constexpr (requires { std::cbegin(e); std::cend(e); } and not requires { e.npos; }) {
+        for (const auto& event : e) { process(event, sm, deps, subs); }
+      } else {
+        sm.process_event(e, deps, subs);
+      }
+    }
+
+    TExpr expr{};
   };
   class process_impl_ {
    public:
