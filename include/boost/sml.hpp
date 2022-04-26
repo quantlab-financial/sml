@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 #include <variant>
+#include <type_traits>
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/mp11/algorithm.hpp>
 #include <tuple>
@@ -2952,7 +2953,7 @@ template <class... Ts>
 struct dispatch_table : aux::pool<Ts...> {
   dispatch_table(Ts... ts) : aux::pool<Ts...>{ts...} {}
 };
-constexpr auto otherwise = [] { return true; };
+constexpr auto otherwise = [] { return std::true_type{}; };
 namespace dsl {
 using boost::sml::event;
 using boost::sml::process;
