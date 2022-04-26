@@ -2952,10 +2952,12 @@ template <class... Ts>
 struct dispatch_table : aux::pool<Ts...> {
   dispatch_table(Ts... ts) : aux::pool<Ts...>{ts...} {}
 };
+constexpr auto otherwise = [] { return true; };
 namespace dsl {
 using boost::sml::event;
 using boost::sml::process;
 using boost::sml::X;
+using boost::sml::otherwise;
 using boost::sml::make_dispatch_table;
 using boost::sml::make_transition_table;
 using boost::sml::dispatch_table;
