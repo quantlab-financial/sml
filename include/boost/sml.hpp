@@ -105,6 +105,10 @@ template <class... Ts>
 struct inherit : Ts... {
   using type = inherit;
 };
+template<class>
+struct wrapper {};
+template<class... Ts>
+using wrap_t = aux::type_list<wrapper<Ts>...>;
 template <class T>
 struct identity {
   using type = T;
@@ -1359,7 +1363,7 @@ struct sm_impl {
       aux::integral_constant<bool, aux::size<initial_states_t>::value != aux::size<history_states_t>::value>;
   using sub_internal_events_t = aux::apply_t<get_sub_internal_events, transitions_t>;
   using events_t = aux::apply_t<aux::unique_t, aux::join_t<sub_internal_events_t, aux::apply_t<get_events, transitions_t>>>;
-  using events_ids_t = aux::apply_t<aux::inherit, events_t>;
+  using events_ids_t = aux::apply_t<aux::inherit, aux::apply_t<aux::wrap_t, events_t>>;
   using has_unexpected_events = typename aux::is_base_of<unexpected, aux::apply_t<aux::inherit, events_t>>::type;
   using has_entry_exits = typename aux::is_base_of<entry_exit, aux::apply_t<aux::inherit, events_t>>::type;
   using defer_t = defer_queue_t<aux::apply_t<defer_event_t, events_t>>;
@@ -1410,14 +1414,14 @@ struct sm_impl {
     process_internal_events(anonymous{}, deps, subs);
   }
   template <class TEvent, class TDeps, class TSubs, class... Ts,
-            __BOOST_SML_REQUIRES(!aux::is_base_of<get_generic_t<TEvent>, events_ids_t>::value &&
-                                 !aux::is_base_of<get_mapped_t<TEvent>, events_ids_t>::value)>
+            __BOOST_SML_REQUIRES(!aux::is_base_of<aux::wrapper<get_generic_t<TEvent>>, events_ids_t>::value &&
+                                 !aux::is_base_of<aux::wrapper<get_mapped_t<TEvent>>, events_ids_t>::value)>
   bool process_internal_events(const TEvent &, TDeps &, TSubs &, Ts &&...) {
     return false;
   }
   template <class TEvent, class TDeps, class TSubs,
-            __BOOST_SML_REQUIRES(aux::is_base_of<get_generic_t<TEvent>, events_ids_t>::value &&
-                                 !aux::is_base_of<get_mapped_t<TEvent>, events_ids_t>::value)>
+            __BOOST_SML_REQUIRES(aux::is_base_of<aux::wrapper<get_generic_t<TEvent>>, events_ids_t>::value &&
+                                 !aux::is_base_of<aux::wrapper<get_mapped_t<TEvent>>, events_ids_t>::value)>
   bool process_internal_events(const TEvent &event, TDeps &deps, TSubs &subs) {
     log_process_event<sm_t>(aux::type<logger_t>{}, this, deps, event);
 #if BOOST_SML_DISABLE_EXCEPTIONS
@@ -1428,7 +1432,7 @@ struct sm_impl {
 #endif
   }
   template <class TEvent, class TDeps, class TSubs,
-            __BOOST_SML_REQUIRES(aux::is_base_of<get_mapped_t<TEvent>, events_ids_t>::value)>
+            __BOOST_SML_REQUIRES(aux::is_base_of<aux::wrapper<get_mapped_t<TEvent>>, events_ids_t>::value)>
   bool process_internal_events(const TEvent &event, TDeps &deps, TSubs &subs) {
     log_process_event<sm_t>(aux::type<logger_t>{}, this, deps, event);
 #if BOOST_SML_DISABLE_EXCEPTIONS
@@ -1439,14 +1443,14 @@ struct sm_impl {
 #endif
   }
   template <class TEvent, class TDeps, class TSubs, class... Ts,
-            __BOOST_SML_REQUIRES(!aux::is_base_of<get_generic_t<TEvent>, events_ids_t>::value &&
-                                 !aux::is_base_of<get_mapped_t<TEvent>, events_ids_t>::value)>
+            __BOOST_SML_REQUIRES(!aux::is_base_of<aux::wrapper<get_generic_t<TEvent>>, events_ids_t>::value &&
+                                 !aux::is_base_of<aux::wrapper<get_mapped_t<TEvent>>, events_ids_t>::value)>
   bool process_internal_event(const TEvent &, TDeps &, TSubs &, Ts &&...) {
     return false;
   }
   template <class TEvent, class TDeps, class TSubs,
-            __BOOST_SML_REQUIRES(aux::is_base_of<get_generic_t<TEvent>, events_ids_t>::value &&
-                                 !aux::is_base_of<get_mapped_t<TEvent>, events_ids_t>::value)>
+            __BOOST_SML_REQUIRES(aux::is_base_of<aux::wrapper<get_generic_t<TEvent>>, events_ids_t>::value &&
+                                 !aux::is_base_of<aux::wrapper<get_mapped_t<TEvent>>, events_ids_t>::value)>
   bool process_internal_event(const TEvent &event, TDeps &deps, TSubs &subs, state_t &current_state) {
     log_process_event<sm_t>(aux::type<logger_t>{}, this, deps, event);
 #if BOOST_SML_DISABLE_EXCEPTIONS
@@ -1458,7 +1462,7 @@ struct sm_impl {
 #endif
   }
   template <class TEvent, class TDeps, class TSubs,
-            __BOOST_SML_REQUIRES(aux::is_base_of<get_mapped_t<TEvent>, events_ids_t>::value)>
+            __BOOST_SML_REQUIRES(aux::is_base_of<aux::wrapper<get_mapped_t<TEvent>>, events_ids_t>::value)>
   bool process_internal_event(const TEvent &event, TDeps &deps, TSubs &subs, state_t &current_state) {
     log_process_event<sm_t>(aux::type<logger_t>{}, this, deps, event);
 #if BOOST_SML_DISABLE_EXCEPTIONS
@@ -1625,7 +1629,7 @@ class sm {
   using deps_t =
       aux::apply_t<aux::pool,
                    aux::apply_t<aux::unique_t, aux::join_t<deps, logger_dep_t, aux::apply_t<merge_deps, sub_sms_t>>>>;
-  struct events_ids : aux::apply_t<aux::inherit, events> {};
+  struct events_ids : aux::apply_t<aux::inherit, aux::apply_t<aux::wrap_t, events>> {};
 
  public:
   using type = sm_t;
@@ -1653,7 +1657,7 @@ class sm {
     } ds{deps_};
     aux::get<sm_impl<TSM>>(sub_sms_).start(ds, sub_sms_);
   }
-  template <class TEvent, class... Ts, __BOOST_SML_REQUIRES(aux::is_base_of<TEvent, events_ids>::value)>
+  template <class TEvent, class... Ts, __BOOST_SML_REQUIRES(aux::is_base_of<aux::wrapper<TEvent>, events_ids>::value)>
   void process_event(const TEvent &event, Ts &... ts) {
     aux::tuple<Ts &...> args{ts...};
     struct _deps {
@@ -1662,7 +1666,7 @@ class sm {
     } ds{deps_, args};
     aux::get<sm_impl<TSM>>(sub_sms_).process_event(event, ds, sub_sms_);
   }
-  template <class TEvent, class... Ts, __BOOST_SML_REQUIRES(!aux::is_base_of<TEvent, events_ids>::value)>
+  template <class TEvent, class... Ts, __BOOST_SML_REQUIRES(!aux::is_base_of<aux::wrapper<TEvent>, events_ids>::value)>
   void process_event(const TEvent &event, Ts &... ts) {
     aux::tuple<Ts &...> args{ts...};
     struct _deps {
