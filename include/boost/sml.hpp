@@ -186,6 +186,17 @@ struct remove_reference<T &&> {
 };
 template <class T>
 using remove_reference_t = typename remove_reference<T>::type;
+template<class T>
+struct remove_const_ref {
+  using type = T;
+};
+
+template<class T>
+struct remove_const_ref<const T&> {
+  using type = T&;
+};
+template<class T>
+using remove_const_ref_t = typename remove_const_ref<T>::type;
 template <class>
 struct function_traits;
 template <class R, class... TArgs>
@@ -1608,6 +1619,19 @@ struct sm_impl {
   defer_t defer_;
 };
 
+
+template<class... Ts>
+struct has_const_and_not_const {
+  template<class T>
+  using fn = std::conditional_t<
+    std::is_const_v<T>,
+    boost::mp11::mp_contains<aux::type_list<Ts...>, aux::remove_const_ref_t<T>>,
+    std::true_type>;
+};
+
+template<class... Ts>
+using unique_ref_deps_t = boost::mp11::mp_filter<has_const_and_not_const<Ts...>::template fn, aux::type_list<Ts...>>;
+
 template <class TSM>
 class sm {
   using sm_t = typename TSM::sm;
@@ -1626,10 +1650,11 @@ class sm {
   using sm_all_t = aux::join_t<aux::type_list<sm_t>, aux::apply_t<get_sm_t, state_machines>>;
   using sub_sms_t = aux::apply_t<aux::pool, typename convert_to_sm<TSM, aux::apply_t<get_sub_sms, states>>::type>;
   using deps = aux::apply_t<merge_deps, transitions_t>;
+  struct events_ids : aux::apply_t<aux::inherit, aux::apply_t<aux::wrap_t, events>> {};
+
   using deps_t =
       aux::apply_t<aux::pool,
-                   aux::apply_t<aux::unique_t, aux::join_t<deps, logger_dep_t, aux::apply_t<merge_deps, sub_sms_t>>>>;
-  struct events_ids : aux::apply_t<aux::inherit, aux::apply_t<aux::wrap_t, events>> {};
+                   aux::apply_t<aux::unique_t, aux::apply_t<unique_ref_deps_t, aux::join_t<deps, logger_dep_t, aux::apply_t<merge_deps, sub_sms_t>>>>>;
 
  public:
   using type = sm_t;
