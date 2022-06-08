@@ -23,7 +23,10 @@ struct fake_handler {
 
 test emit_event = [] {
   struct {} event{};
-  struct {} sm{};
+  struct sm {
+    using sm_t = sm;
+    using logger_t = void;
+  } sm{};
   fake_handler handler{};
   sml::aux::tuple<fake_handler&> args{handler};
   struct {
@@ -40,7 +43,10 @@ test emit_event = [] {
 
 test emit_callable = [] {
   struct {} event{};
-  struct {} sm{};
+  struct sm {
+    using sm_t = sm;
+    using logger_t = void;
+  } sm{};
   fake_handler handler{};
   sml::aux::tuple<fake_handler&> args{handler};
   struct {
@@ -57,7 +63,10 @@ test emit_callable = [] {
 
 test emit_optional = [] {
   struct {} event{};
-  struct {} sm{};
+  struct sm {
+    using sm_t = sm;
+    using logger_t = void;
+  } sm{};
   fake_handler handler{};
   sml::aux::tuple<fake_handler&> args{handler};
   struct {
@@ -74,7 +83,10 @@ test emit_optional = [] {
 
 test emit_optional_disengaged = [] {
   struct {} event{};
-  struct {} sm{};
+  struct sm {
+    using sm_t = sm;
+    using logger_t = void;
+  } sm{};
   fake_handler handler{};
   sml::aux::tuple<fake_handler&> args{handler};
   struct {
@@ -90,7 +102,10 @@ test emit_optional_disengaged = [] {
 
 test emit_tuple = [] {
   struct {} event{};
-  struct {} sm{};
+  struct sm {
+    using sm_t = sm;
+    using logger_t = void;
+  } sm{};
   fake_handler handler{};
   sml::aux::tuple<fake_handler&> args{handler};
   struct {
@@ -107,7 +122,10 @@ test emit_tuple = [] {
 
 test emit_tuples = [] {
   struct {} event{};
-  struct {} sm{};
+  struct sm {
+    using sm_t = sm;
+    using logger_t = void;
+  } sm{};
   fake_handler handler{};
   sml::aux::tuple<fake_handler&> args{handler};
   struct {
@@ -125,7 +143,10 @@ test emit_tuples = [] {
 
 test emit_variant = [] {
   struct {} event{};
-  struct {} sm{};
+  struct sm {
+    using sm_t = sm;
+    using logger_t = void;
+  } sm{};
   fake_handler handler{};
   sml::aux::tuple<fake_handler&> args{handler};
   struct {
@@ -142,7 +163,10 @@ test emit_variant = [] {
 
 test emit_variant_not_set = [] {
   struct {} event{};
-  struct {} sm{};
+  struct sm {
+    using sm_t = sm;
+    using logger_t = void;
+  } sm{};
   fake_handler handler{};
   sml::aux::tuple<fake_handler&> args{handler};
   struct {
@@ -159,7 +183,10 @@ test emit_variant_not_set = [] {
 
 test emit_range = [] {
   struct {} event{};
-  struct {} sm{};
+  struct sm {
+    using sm_t = sm;
+    using logger_t = void;
+  } sm{};
   fake_handler handler{};
   sml::aux::tuple<fake_handler&> args{handler};
   struct {
@@ -178,7 +205,10 @@ test emit_range = [] {
 
 test emit_range_but_not_string = [] {
   struct {} event{};
-  struct {} sm{};
+  struct sm {
+    using sm_t = sm;
+    using logger_t = void;
+  } sm{};
   fake_handler handler{};
   sml::aux::tuple<fake_handler&> args{handler};
   struct {
@@ -195,7 +225,10 @@ test emit_range_but_not_string = [] {
 
 test emit_tuple_of_optional_ranges = [] {
   struct {} event{};
-  struct {} sm{};
+  struct sm {
+    using sm_t = sm;
+    using logger_t = void;
+  } sm{};
   fake_handler handler{};
   sml::aux::tuple<fake_handler&> args{handler};
   struct {
@@ -216,7 +249,10 @@ test emit_tuple_of_optional_ranges = [] {
 
 test emit_range_of_tuples = [] {
   struct {} event{};
-  struct {} sm{};
+  struct sm {
+    using sm_t = sm;
+    using logger_t = void;
+  } sm{};
   fake_handler handler{};
   sml::aux::tuple<fake_handler&> args{handler};
   struct {
@@ -234,7 +270,10 @@ test emit_range_of_tuples = [] {
 
 test emit_struct = [] {
   struct {} event{};
-  struct {} sm{};
+  struct sm {
+    using sm_t = sm;
+    using logger_t = void;
+  } sm{};
   fake_handler handler{};
   sml::aux::tuple<fake_handler&> args{handler};
   struct {

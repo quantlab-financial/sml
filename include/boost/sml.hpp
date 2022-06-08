@@ -2177,35 +2177,38 @@ struct emit : action_base, expr_base {
   }
 
   template <class TEvent, class TSM, class TDeps, class TSubs>
-  constexpr auto operator()(const TEvent & event, const TSM &, const TDeps & deps, const TSubs &) -> void {
+  constexpr auto operator()(const TEvent & event, const TSM &, TDeps & deps, const TSubs &) -> void {
     if constexpr (requires { deps.args; }) {
       if constexpr(concepts::callable<void, TExpr>::value) {
         [&]<template <class...> class TList, class... Ts, class... TArgs>(const TList<Ts...>&, aux::tuple<TArgs...>& args) {
-          on(apply(expr, deps.args, deps.deps, get_arg(aux::type<Ts>{}, event, deps)...), args);
+          on<typename TSM::sm_t, typename TSM::logger_t>(deps.deps, apply(expr, deps.args, deps.deps, get_arg(aux::type<Ts>{}, event, deps)...), args);
         }(args_t<TExpr, TEvent>{}, deps.args);
       } else {
-        on(expr, deps.args);
+        on<typename TSM::sm_t, typename TSM::logger_t>(deps.deps, expr, deps.args);
       }
     }
   }
 
  private:
-  template<class TEvent, class... TArgs>
-  constexpr auto on(const TEvent& e, aux::tuple<TArgs...>& args) -> void {
+  template<class TSM, class TLogger, class TEvent, class... TArgs>
+  constexpr auto on(auto& deps, const TEvent& e, aux::tuple<TArgs...>& args) -> void {
     if constexpr (requires { e(); }) {
-      on(e(), args);
+      on<TSM, TLogger>(deps, e(), args);
     } else if constexpr (requires { e.has_value(); *e; } and not requires { typename TEvent::name; }) {
       if (e) {
-        on(*e, args);
+        on<TSM, TLogger>(deps, *e, args);
       }
     } else if constexpr(aux::is_tuple<TEvent>) {
-        std::apply([&](const auto&... events) { (on(events, args), ...); }, e);
+        std::apply([&](const auto&... events) { (on<TSM, TLogger>(deps, events, args), ...); }, e);
     } else if constexpr (requires { e.index(); }) {
-      std::visit([ & ](const auto &event) { on(event, args); }, e);
+      std::visit([ & ](const auto &event) { on<TSM, TLogger>(deps, event, args); }, e);
     } else if constexpr (requires { std::cbegin(e); std::cend(e); } and not requires { e.npos; }) {
-      for (const auto& event : e) { on(event, args); }
+      for (const auto& event : e) { on<TSM, TLogger>(deps, event, args); }
     } else {
-      aux::on(e, aux::get_by_type<TArgs>(&args)...);
+      if constexpr (requires { static_cast<aux::pool_type<TLogger &> &>(deps).value.template log_send_event<typename TSM::name_t>(e); }) {
+        static_cast<aux::pool_type<TLogger &> &>(deps).value.template log_send_event<typename TSM::name_t>(e);
+        aux::on(e, aux::get_by_type<TArgs>(&args)...);
+      }
     }
   }
 
