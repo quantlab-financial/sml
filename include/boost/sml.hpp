@@ -2207,8 +2207,8 @@ struct emit : action_base, expr_base {
     } else {
       if constexpr (requires { static_cast<aux::pool_type<TLogger &> &>(deps).value.template log_send_event<typename TSM::name_t>(e); }) {
         static_cast<aux::pool_type<TLogger &> &>(deps).value.template log_send_event<typename TSM::name_t>(e);
-        aux::on(e, aux::get_by_type<TArgs>(&args)...);
       }
+      aux::on(e, aux::get_by_type<TArgs>(&args)...);
     }
   }
 
