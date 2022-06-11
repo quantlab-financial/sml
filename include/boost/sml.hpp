@@ -1619,19 +1619,6 @@ struct sm_impl {
   defer_t defer_;
 };
 
-
-template<class... Ts>
-struct has_const_and_not_const {
-  template<class T>
-  using fn = std::conditional_t<
-    std::is_const_v<T>,
-    boost::mp11::mp_contains<aux::type_list<Ts...>, aux::remove_const_ref_t<T>>,
-    std::true_type>;
-};
-
-template<class... Ts>
-using unique_ref_deps_t = boost::mp11::mp_filter<has_const_and_not_const<Ts...>::template fn, aux::type_list<Ts...>>;
-
 template <class TSM>
 class sm {
   using sm_t = typename TSM::sm;
@@ -1654,7 +1641,7 @@ class sm {
 
   using deps_t =
       aux::apply_t<aux::pool,
-                   aux::apply_t<aux::unique_t, aux::apply_t<unique_ref_deps_t, aux::join_t<deps, logger_dep_t, aux::apply_t<merge_deps, sub_sms_t>>>>>;
+                   aux::apply_t<aux::unique_t, aux::join_t<deps, logger_dep_t, aux::apply_t<merge_deps, sub_sms_t>>>>;
 
  public:
   using type = sm_t;
@@ -2428,7 +2415,7 @@ struct ignore<E, aux::type_list<Ts...>> {
   struct non_events {
     using type = aux::conditional_t<aux::is_same<back::get_event_t<E>, aux::remove_reference_t<T>>::value ||
                                         aux::is_same<T, action_base>::value,
-                                    aux::type_list<>, aux::type_list<T>>;
+                                    aux::type_list<>, aux::type_list<aux::remove_const_ref_t<T>>>;
   };
   using type = aux::join_t<typename non_events<Ts>::type...>;
 };
