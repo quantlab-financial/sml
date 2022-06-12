@@ -1853,8 +1853,8 @@ static auto apply_impl(priority<X>, T object, aux::tuple<TArgs...> &, const TDep
   using type = decltype(object(std::forward<Ts>(ts)...));
   if constexpr(std::is_void_v<type>) {
     object(std::forward<Ts>(ts)...);
-  } else if constexpr(requires (type& t) { bool(t); } and std::is_base_of_v<aux::pool_type<const type&>, TDeps>) {
-    return const_cast<type&>(aux::get<const type&>(const_cast<TDeps&>(deps))) = object(std::forward<Ts>(ts)...);
+  } else if constexpr(requires (type& t) { bool(t); } and std::is_base_of_v<aux::pool_type<type&>, TDeps>) {
+    return const_cast<type&>(aux::get<type&>(const_cast<TDeps&>(deps))) = object(std::forward<Ts>(ts)...);
   } else {
     return object(std::forward<Ts>(ts)...);
   }
