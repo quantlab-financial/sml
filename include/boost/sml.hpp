@@ -1753,6 +1753,8 @@ class sm {
 
   auto is_terminated() const { return aux::cget<sm_impl<TSM>>(sub_sms_).is_terminated(); }
 
+  template<class T> constexpr auto get() const -> const T& { return aux::cget<T&>(deps_); }
+
  private:
   deps_t deps_;
   sub_sms_t sub_sms_;
