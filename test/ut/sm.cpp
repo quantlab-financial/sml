@@ -45,3 +45,16 @@ test deps = [] {
   using namespace boost::sml::dsl;
   expect(sm.is(X));
 };
+
+test boolean = [] {
+  auto boolean {
+    using namespace boost::sml::dsl;
+    return transition_table{
+     * "idle"_s + event<e> [([](const bool& b) { return not b; })] ([](const bool& b) { expect(b); }
+    };
+  };
+
+  bool b{};
+  boost::sml::sm<decltype(boolean)> sm{b};
+  sm.process_event(e{});
+};
