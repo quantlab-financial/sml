@@ -2118,52 +2118,11 @@ struct defer : action_base {
   }
 };
 
-template<class T>
-struct event_traits {
-  using type = boost::mp11::mp_list<T>;
-};
-
-template<class... Ts>
-struct event_traits<std::variant<Ts...>> {
-  using type = boost::mp11::mp_list<typename event_traits<Ts>::type...>;
-};
-
-template<class... Ts>
-struct event_traits<std::pair<Ts...>> {
-  using type = boost::mp11::mp_list<typename event_traits<Ts>::type...>;
-};
-
-template<class... Ts>
-struct event_traits<std::tuple<Ts...>> {
-  using type = boost::mp11::mp_list<typename event_traits<Ts>::type...>;
-};
-
-template<class T>
-struct event_traits<std::vector<T>> {
-  using type = typename event_traits<typename event_traits<T>::type>::type;
-};
-
-template<class F, class T>
-struct event_traits<boost::transformed_range<F, T>> {
-  using type = typename event_traits<std::remove_cvref_t<T>>::type;
-};
-
 template<class TExpr>
 struct emit : action_base, expr_base {
   using expr_t = TExpr;
 
   constexpr explicit(true) emit(TExpr expr) : expr{expr} {}
-
-  template <class TEvent>
-  constexpr auto operator()(const TEvent &, ...) {
-    if constexpr(concepts::callable<void, TExpr>::value) {
-      return []<template <class...> class TList, class... Ts>(TList<Ts...>) {
-        return typename event_traits<std::remove_cvref_t<decltype(std::declval<TExpr>()(std::declval<Ts>()...))>>::type{};
-      }(args_t<TExpr, TEvent>{});
-    } else {
-      return expr;
-    }
-  }
 
   template <class TEvent, class TSM, class TDeps, class TSubs>
   constexpr auto operator()(const TEvent & event, const TSM &, TDeps & deps, const TSubs &) -> void {
@@ -2179,10 +2138,23 @@ struct emit : action_base, expr_base {
   }
 
  private:
-  template<class TSM, class TLogger, class TEvent, class... TArgs>
-  constexpr auto on(auto& deps, const TEvent& e, aux::tuple<TArgs...>& args) -> void {
+  template<class TSM, class TLogger, class TDeps, class TArgs>
+  struct on_impl final {
+    emit& self;
+    TDeps& deps;
+    TArgs& args;
+
+    constexpr auto operator()(const auto& event) {
+      self.template on<TSM, TLogger>(deps, event, args);
+    }
+  };
+
+  template<class TSM, class TLogger, class TDeps, class TEvent, class... TArgs>
+  constexpr auto on(TDeps& deps, const TEvent& e, aux::tuple<TArgs...>& args) -> void {
     if constexpr (requires { e(); }) {
       on<TSM, TLogger>(deps, e(), args);
+    } else if constexpr(on_impl<TSM, TLogger, TDeps, aux::tuple<TArgs...>> self{*this, deps, args}; requires { e(self); }) {
+        e(self);
     } else if constexpr (requires { e.has_value(); *e; } and not requires { typename TEvent::name; }) {
       if (e) {
         on<TSM, TLogger>(deps, *e, args);

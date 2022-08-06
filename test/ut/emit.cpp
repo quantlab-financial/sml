@@ -288,3 +288,23 @@ test emit_struct = [] {
   expect(1 == std::size(handler.on_calls));
   expect(42 == std::any_cast<bar>(handler.on_calls[0]).i);
 };
+
+test emit_callable_emit = [] {
+  struct {} event{};
+  struct sm {
+    using sm_t = sm;
+    using logger_t = void;
+  } sm{};
+  fake_handler handler{};
+  sml::aux::tuple<fake_handler&> args{handler};
+  struct {
+    decltype(args)& args;
+    sml::aux::pool<> deps{};
+  } deps{{args}};
+  struct {} subs;
+
+  sml::front::actions::emit{[]{return [](auto& emit) { emit(42); }; }}(event, sm, deps, subs);
+
+  expect(1 == std::size(handler.on_calls));
+  expect(42 == std::any_cast<int>(handler.on_calls[0]));
+};
