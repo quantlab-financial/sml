@@ -2228,6 +2228,7 @@ struct process {
    private:
     aux::conditional_t<aux::is_constructible<TEvent, const TEvent &>::value, TEvent, const TEvent &> event;
   };
+
   template <class TExpr>
   class process_impl<TExpr, aux::enable_if_t<concepts::callable<void, TExpr>::value>> : public action_base {
    public:
@@ -2241,10 +2242,24 @@ struct process {
     }
 
    private:
-    template<class TEvent>
-    constexpr auto process(const TEvent& e, auto& sm, auto& deps, auto& subs) -> void {
+    template<class TSM, class TDeps, class TSubs>
+    struct on_impl final {
+      process_impl& self;
+      TSM& sm;
+      TDeps& deps;
+      TSubs& subs;
+
+      constexpr auto operator()(const auto& event) {
+        self.process(event, sm, deps, subs);
+      }
+    };
+
+    template<class TEvent, class TSM, class TDeps, class TSubs>
+    constexpr auto process(const TEvent& e, TSM& sm, TDeps& deps, TSubs& subs) -> void {
       if constexpr (requires { e(); }) {
         process(e(), sm, deps, subs);
+      } else if constexpr(on_impl<TSM, TDeps, TSubs> self{*this, sm, deps, subs}; requires { e(self); }) {
+        e(self);
       } else if constexpr (requires { e.has_value(); *e; }) {
         if (e) {
           process(*e, sm, deps, subs);

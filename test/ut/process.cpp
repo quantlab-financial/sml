@@ -96,3 +96,18 @@ test process_range_of_tuples = [] {
   expect(1 == std::any_cast<int>(sm.pe_calls[0]));
   expect(2 == std::any_cast<int>(sm.pe_calls[1]));
 };
+
+test process_lazy = [] {
+  struct {} event{};
+  fake_sm sm{};
+  struct {
+    sml::aux::tuple<> args{};
+    sml::aux::pool<> deps{};
+  } deps;
+  struct {} subs;
+
+  sml::front::actions::process{}([]{return [](auto& process) { process(42); };})(event, sm, deps, subs);
+
+  expect(1 == std::size(sm.pe_calls));
+  expect(42 == std::any_cast<int>(sm.pe_calls[0]));
+};
