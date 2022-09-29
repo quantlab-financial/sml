@@ -735,7 +735,7 @@ struct sm_policy {
   using defer_queue_policy = decltype(get_policy<no_policy, defer_queue_policy__>((aux::inherit<TPolicies...> *)0));
   using logger_policy = decltype(get_policy<no_policy, logger_policy__>((aux::inherit<TPolicies...> *)0));
   using testing_policy = decltype(get_policy<no_policy, testing_policy__>((aux::inherit<TPolicies...> *)0));
-  using dispatch_policy = decltype(get_policy<struct branch_stm, dispatch_policy__>((aux::inherit<TPolicies...> *)0));
+  using dispatch_policy = decltype(get_policy<struct reversed_branch_stm, dispatch_policy__>((aux::inherit<TPolicies...> *)0));
   template <class T>
   using rebind = typename rebind_impl<T, TPolicies...>::type;
 };
@@ -1082,6 +1082,23 @@ struct branch_stm {
                      TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state)
                : dispatch<N + 1, TMappings>(self, current_state, event, deps, subs, aux::type_list<TStates...>{});
     return false;
+  }
+};
+
+struct reversed_branch_stm {
+  template <int, class TMappings, class sm_impl, class State, class TEvent, class TDeps, class TSubs>
+  [[gnu::always_inline]] static bool dispatch(sm_impl &, State &, const TEvent &, TDeps &, TSubs &, const aux::type_list<> &) {
+    return false;
+  }
+
+  template <int, class TMappings, class sm_impl, class State, class TEvent, class TDeps, class TSubs, class TState,
+            class... TStates>
+  [[gnu::always_inline]] static bool dispatch(sm_impl &self, State &current_state, const TEvent &event, TDeps &deps,
+                                              TSubs &subs, const aux::type_list<TState, TStates...> &) {
+    return aux::get_id<typename sm_impl::state_t, TState>((typename sm_impl::states_ids_t *)0) == current_state
+               ? get_state_mapping_t<TState, TMappings, typename sm_impl::has_unexpected_events>::template execute<
+                     TEvent, sm_impl, TDeps, TSubs>(event, self, deps, subs, current_state)
+               : dispatch<0, TMappings>(self, current_state, event, deps, subs, aux::type_list<TStates...>{});
   }
 };
 
