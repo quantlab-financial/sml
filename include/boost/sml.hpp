@@ -1170,7 +1170,6 @@ struct sm_impl {
   using deps = aux::apply_t<merge_deps, transitions_t>;
   using state_t = aux::conditional_t<(aux::size<states_t>::value > 0xFF), unsigned short, aux::byte>;
   static constexpr auto regions = aux::size<initial_states_t>::value;
-  static_assert(regions > 0 || aux::is_same<aux::type_list<void>, states_t>::value, "At least one initial state is required");
 #if !BOOST_SML_DISABLE_EXCEPTIONS
   using exceptions = aux::apply_t<aux::unique_t, aux::apply_t<get_exceptions, events_t>>;
   using has_exceptions = aux::integral_constant<bool, (aux::size<exceptions>::value > 0)>;
@@ -2743,12 +2742,18 @@ auto make_dispatch_table(Ts... ts) {
 template <class... Ts>
   requires aux::is_same<aux::bool_list<aux::always<Ts>::value...>, aux::bool_list<concepts::transitional<Ts>::value...>>::value
 struct transition_table : aux::pool<Ts...> {
-  transition_table(Ts... ts) : aux::pool<Ts...>{ts...} {}
+  transition_table(Ts... ts) : aux::pool<Ts...>{ts...} {
+    constexpr auto regions = (Ts::initial + ...);
+    static_assert(regions > 0, "Transition table requires at least one initial state!");
+  }
 };
 template <class... Ts>
   requires aux::is_same<aux::bool_list<aux::always<Ts>::value...>, aux::bool_list<concepts::transitional<Ts>::value...>>::value
 struct dispatch_table : aux::pool<Ts...> {
-  dispatch_table(Ts... ts) : aux::pool<Ts...>{ts...} {}
+  dispatch_table(Ts... ts) : aux::pool<Ts...>{ts...} {
+    constexpr auto regions = (Ts::initial + ...);
+    static_assert(regions == 0, "Dispatch table can't have states!");
+  }
 };
 constexpr auto otherwise = [] { return std::true_type{}; };
 namespace dsl {
