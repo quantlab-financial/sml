@@ -1632,7 +1632,7 @@ static auto apply(T object, const TEvent &event, aux::tuple<Ts...> &args, const 
   return object(event, aux::get_by_type<Ts>(&args)...);
 }
 template <class T, class TEvent, class... Ts, class TDeps>
-static auto apply(T object, const TEvent &event, aux::tuple<Ts...> &args, const TDeps&) -> decltype(object(aux::get_by_type<Ts>(&args)...)) {
+static auto apply(T object, const TEvent &, aux::tuple<Ts...> &args, const TDeps&) -> decltype(object(aux::get_by_type<Ts>(&args)...)) {
   return object(aux::get_by_type<Ts>(&args)...);
 }
 template <auto>
