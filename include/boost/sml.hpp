@@ -1631,6 +1631,10 @@ template <class T, class TEvent, class... Ts, class TDeps>
 static auto apply(T object, const TEvent &event, aux::tuple<Ts...> &args, const TDeps&) -> decltype(object(event, aux::get_by_type<Ts>(&args)...)) {
   return object(event, aux::get_by_type<Ts>(&args)...);
 }
+template <class T, class TEvent, class... Ts, class TDeps>
+static auto apply(T object, const TEvent &event, aux::tuple<Ts...> &args, const TDeps&) -> decltype(object(aux::get_by_type<Ts>(&args)...)) {
+  return object(aux::get_by_type<Ts>(&args)...);
+}
 template <auto>
 struct priority {};
 template <class T, class... TArgs, class TDeps, class... Ts>
