@@ -2120,6 +2120,8 @@ struct event {
     return transition_ea<event, aux::zero_wrapper<T>>{*this, aux::zero_wrapper<T>{t}};
   }
   auto operator()() const { return TEvent{}; }
+  template<class T>
+  auto operator()(const T&) const { return event<T>{}; }
 };
 }  // namespace front
 namespace front {
