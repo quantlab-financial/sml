@@ -325,6 +325,7 @@ struct tuple_impl<index_sequence<0>> {
 };
 template <class... Ts>
 using tuple = tuple_impl<make_index_sequence<sizeof...(Ts)>, Ts...>;
+
 template <class T, int N>
 constexpr T &get_by_type(tuple_type<N, T> *object) {
   return static_cast<tuple_type<N, T> &>(*object).value;
@@ -1278,20 +1279,37 @@ struct sm_impl {
     return get_state_mapping_t<TState, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, *this, deps, subs, unused);
   }
 
+  template<class... TArgs>
+  constexpr decltype(auto) last(aux::tuple<TArgs...>& t) const {
+    return (aux::get_by_type<TArgs>(&t), ...);
+  }
+
   template <class TMappings, class TEvent, class TDeps, class TSubs, class... TStates>
   bool process_event_impl(const TEvent &event, TDeps &deps, TSubs &subs, const aux::type_list<TStates...> &states,
                           aux::index_sequence<0>) {
-    return dispatch_t::template dispatch<0, TMappings>(*this, current_state_[0], event, deps, subs, states);
+    if constexpr (concepts::callable<void, TEvent>::value) {
+      return dispatch_t::template dispatch<0, TMappings>(*this, current_state_[0], last(deps.args), deps, subs, states);
+    } else {
+      return dispatch_t::template dispatch<0, TMappings>(*this, current_state_[0], event, deps, subs, states);
+    }
   }
   template <class TMappings, class TEvent, class TDeps, class TSubs, class... TStates, int... Ns>
   bool process_event_impl(const TEvent &event, TDeps &deps, TSubs &subs, const aux::type_list<TStates...> &states,
                           aux::index_sequence<Ns...>) {
-    return (dispatch_t::template dispatch<0, TMappings>(*this, current_state_[Ns], event, deps, subs, states) | ...);
+    if constexpr (concepts::callable<void, TEvent>::value) {
+      return (dispatch_t::template dispatch<0, TMappings>(*this, current_state_[Ns], last(deps.args), deps, subs, states) | ...);
+    } else {
+      return (dispatch_t::template dispatch<0, TMappings>(*this, current_state_[Ns], event, deps, subs, states) | ...);
+    }
   }
   template <class TMappings, class TEvent, class TDeps, class TSubs, class... TStates>
   bool process_event_impl(const TEvent &event, TDeps &deps, TSubs &subs, const aux::type_list<TStates...> &states,
                           state_t &current_state) {
-    return dispatch_t::template dispatch<0, TMappings>(*this, current_state, event, deps, subs, states);
+    if constexpr (concepts::callable<void, TEvent>::value) {
+      return dispatch_t::template dispatch<0, TMappings>(*this, current_state, last(deps.args), deps, subs, states);
+    } else {
+      return dispatch_t::template dispatch<0, TMappings>(*this, current_state, event, deps, subs, states);
+    }
   }
 #if !BOOST_SML_DISABLE_EXCEPTIONS
   template <class TMappings, class TEvent, class TDeps, class TSubs>
@@ -1729,7 +1747,7 @@ struct call<TEvent, aux::type_list<action_base>, TLogger> {
 template <class TEvent, class... Ts>
 struct call<TEvent, aux::type_list<Ts...>, back::no_policy> {
   template <class T, class TSM, class TDeps, class TSubs>
-  static auto execute(T object, const TEvent &event, TSM &, TDeps &deps, TSubs &) -> decltype(apply(object, deps.args, deps.deps, get_arg(aux::type<Ts>{}, event, deps)...)) {
+  static auto execute(T object, const TEvent &event, TSM &, TDeps &deps, TSubs &) {
     return apply(object, deps.args, deps.deps, get_arg(aux::type<Ts>{}, event, deps)...);
   }
 };
