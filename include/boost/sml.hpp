@@ -1275,7 +1275,7 @@ struct sm_impl {
   }
   template<class TEvent, class... TArgs>
   [[nodiscard]] constexpr auto& get_event(const TEvent& event, aux::tuple<TArgs...>& t) const {
-    if constexpr (requires { TEvent{}(aux::get_by_id<sizeof...(TArgs)-1>(&t)); }) {
+    if constexpr (requires { std::declval<TEvent>()(aux::get_by_id<sizeof...(TArgs)-1>(&t)); }) {
       return aux::get_by_id<sizeof...(TArgs)-1>(&t);
     } else {
       return event;
