@@ -882,7 +882,7 @@ template <class TSM>
 struct transitions_sub<sm<TSM>> {
   template <class TEvent, class SM, class TDeps, class TSubs>
   constexpr static bool execute(const TEvent &event, SM &, TDeps &deps, TSubs &subs, typename SM::state_t &) {
-    sub_sm<sm_impl<TSM>>::get(&subs).template process_event<TEvent>(event, deps, subs);
+    sub_sm<sm_impl<TSM>>::get(&subs).process_event(event, deps, subs);
     return true;
   }
 };
@@ -1184,15 +1184,15 @@ struct sm_impl {
   sm_impl(sm_impl &&) = default;
   sm_impl(const sm_impl &) = delete;
   sm_impl &operator=(const sm_impl &) = delete;
-  template <class TEvent, class TDeps, class TSubs>
+  template <class TEvent, class TDeps, class TSubs, class TConcept = TEvent>
   bool process_event(const TEvent &event, TDeps &deps, TSubs &subs) {
     log_process_event<sm_t>(aux::type<logger_t>{}, this, deps, event);
 #if BOOST_SML_DISABLE_EXCEPTIONS
-    const auto handled = process_event_impl<get_event_mapping_t<get_generic_t<TEvent>, mappings>>(
+    const auto handled = process_event_impl<get_event_mapping_t<get_generic_t<TConcept>, mappings>>(
         event, deps, subs, states_t{}, aux::make_index_sequence<regions>{});
 #else
     const auto handled =
-        process_event_noexcept<get_event_mapping_t<get_generic_t<TEvent>, mappings>>(event, deps, subs, has_exceptions{});
+        process_event_noexcept<get_event_mapping_t<get_generic_t<TConcept>, mappings>>(event, deps, subs, has_exceptions{});
 #endif
     process_internal_events(anonymous{}, deps, subs);
     process_defer_events(deps, subs, handled, aux::type<defer_queue_t<TEvent>>{}, events_t{});
@@ -1273,36 +1273,27 @@ struct sm_impl {
                                                                                        has_exceptions{});
 #endif
   }
-  template<class TEvent, class... TArgs>
-  [[nodiscard]] constexpr auto& get_event(const TEvent& event, aux::tuple<TArgs...>& t) const {
-    if constexpr (requires { std::declval<TEvent>()(aux::get_by_id<sizeof...(TArgs)-1>(&t)); }) {
-      return aux::get_by_id<sizeof...(TArgs)-1>(&t);
-    } else {
-      return event;
-    }
-  }
 
   template <class TMappings, class TEvent, class TDeps, class TSubs, class TState>
   bool process_event_impl(const TEvent &event, TDeps &deps, TSubs &subs, const aux::type_list<TState> &, aux::index_sequence<>) {
     aux::byte unused{};
-    const auto& e = get_event<TEvent>(event, deps.args);
-    return get_state_mapping_t<TState, TMappings, typename sm_impl::has_unexpected_events>::template execute<std::remove_cvref_t<decltype(e)>, sm_impl, TDeps, TSubs>(e, *this, deps, subs, unused);
+    return get_state_mapping_t<TState, TMappings, typename sm_impl::has_unexpected_events>::template execute<TEvent, sm_impl, TDeps, TSubs>(event, *this, deps, subs, unused);
   }
 
   template <class TMappings, class TEvent, class TDeps, class TSubs, class... TStates>
   bool process_event_impl(const TEvent &event, TDeps &deps, TSubs &subs, const aux::type_list<TStates...> &states,
                           aux::index_sequence<0>) {
-    return dispatch_t::template dispatch<0, TMappings>(*this, current_state_[0], get_event<TEvent>(event, deps.args), deps, subs, states);
+    return dispatch_t::template dispatch<0, TMappings>(*this, current_state_[0], event, deps, subs, states);
   }
   template <class TMappings, class TEvent, class TDeps, class TSubs, class... TStates, int... Ns>
   bool process_event_impl(const TEvent &event, TDeps &deps, TSubs &subs, const aux::type_list<TStates...> &states,
                         aux::index_sequence<Ns...>) {
-    return (dispatch_t::template dispatch<0, TMappings>(*this, current_state_[Ns], get_event<TEvent>(event, deps.args), deps, subs, states) | ...);
+    return (dispatch_t::template dispatch<0, TMappings>(*this, current_state_[Ns], event, deps, subs, states) | ...);
   }
   template <class TMappings, class TEvent, class TDeps, class TSubs, class... TStates>
   bool process_event_impl(const TEvent &event, TDeps &deps, TSubs &subs, const aux::type_list<TStates...> &states,
                           state_t &current_state) {
-    return dispatch_t::template dispatch<0, TMappings>(*this, current_state, get_event<TEvent>(event, deps.args), deps, subs, states);
+    return dispatch_t::template dispatch<0, TMappings>(*this, current_state, event, deps, subs, states);
   }
 #if !BOOST_SML_DISABLE_EXCEPTIONS
   template <class TMappings, class TEvent, class TDeps, class TSubs>
@@ -1470,21 +1461,27 @@ class sm {
   }
   template <class TEvent, class... Ts, __BOOST_SML_REQUIRES(aux::is_base_of<aux::wrapper<TEvent>, events_ids>::value)>
   void process_event(const TEvent &event, Ts &... ts) {
-    aux::tuple<Ts &...> args{ts...};
+    constexpr auto indices = aux::make_index_sequence<sizeof...(Ts)>{};
+    auto &e = get_event(event, ts...);
+    auto t = get_args<TEvent>(indices, ts...);
     struct _deps {
       deps_t& deps;
-      aux::tuple<Ts &...>& args;
-    } ds{deps_, args};
-    aux::get<sm_impl<TSM>>(sub_sms_).process_event(event, ds, sub_sms_);
+      decltype(t)& args;
+    } ds{deps_, t};
+    using event_t = std::remove_cvref_t<decltype(e)>;
+    aux::get<sm_impl<TSM>>(sub_sms_).template process_event<event_t, _deps, sub_sms_t, TEvent>(e, ds, sub_sms_);
   }
   template <class TEvent, class... Ts, __BOOST_SML_REQUIRES(!aux::is_base_of<aux::wrapper<TEvent>, events_ids>::value)>
   void process_event(const TEvent &event, Ts &... ts) {
-    aux::tuple<Ts &...> args{ts...};
+    constexpr auto indices = aux::make_index_sequence<sizeof...(Ts)>{};
+    auto &e = get_event(event, ts...);
+    auto t = get_args<TEvent>(indices, ts...);
     struct _deps {
       deps_t& deps;
-      aux::tuple<Ts &...>& args;
-    } ds{deps_, args};
-    aux::get<sm_impl<TSM>>(sub_sms_).process_event(unexpected_event<_, TEvent>{event}, ds, sub_sms_);
+      decltype(t)& args;
+    } ds{deps_, t};
+    using event_t = unexpected_event<_, std::remove_cvref_t<decltype(e)>>;
+    aux::get<sm_impl<TSM>>(sub_sms_).template process_event<event_t, _deps, sub_sms_t, TEvent>(event_t{e}, ds, sub_sms_);
   }
   template <class T = aux::identity<sm_t>, class TVisitor, __BOOST_SML_REQUIRES(concepts::callable<void, TVisitor>::value)>
   void visit_current_states(const TVisitor &visitor) const {
@@ -1555,6 +1552,29 @@ class sm {
   template<class T> constexpr auto get() const -> const T& { return aux::cget<T&>(deps_); }
 
  private:
+  template<class TEvent, class... TArgs>
+  [[nodiscard]] static constexpr auto& get_event(const TEvent &event, TArgs &...ts) {
+    if constexpr (requires { std::declval<TEvent>()(*(..., &ts)); }) {
+      return *(..., &ts);
+    } else {
+      return event;
+    }
+  }
+
+  template<class TEvent, class... TArgs>
+  [[nodiscard]] static constexpr auto get_args(const aux::index_sequence<> &, TArgs &...ts) {
+    return aux::tuple<TArgs &...>{ts...};
+  }
+  template<class TEvent, int... Is, class... TArgs>
+  [[nodiscard]] static constexpr auto get_args(const aux::index_sequence<0, Is...> &, TArgs &...ts) {
+    aux::tuple<TArgs &...> t{ts...};
+    if constexpr (requires { std::declval<TEvent>()(aux::get_by_id<sizeof...(Is)>(&t)); }) {
+      return aux::tuple<decltype(aux::get_by_id<Is-1>(&t))...>{aux::get_by_id<Is-1>(&t)...};
+    } else {
+      return t;
+    }
+  }
+
   deps_t deps_;
   sub_sms_t sub_sms_;
   sm_t sm_;
