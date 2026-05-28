@@ -42,7 +42,6 @@
 #pragma clang diagnostic ignored "-Wzero-length-array"
 #pragma clang diagnostic ignored "-Wexpansion-to-defined"
 #elif defined(__GNUC__)
-#define __has_builtin(...) 0
 #define __BOOST_SML_UNUSED __attribute__((unused))
 #define __BOOST_SML_VT_INIT \
   {}
@@ -2821,7 +2820,6 @@ BOOST_SML_NAMESPACE_END
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #elif defined(__GNUC__)
-#undef __has_builtin
 #pragma GCC diagnostic pop
 #elif defined(_MSC_VER)
 #undef __has_builtin
